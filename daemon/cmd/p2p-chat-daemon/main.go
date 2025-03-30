@@ -7,6 +7,7 @@ import (
 	"os"        /* Provides OS functionality (like signals) */
 	"os/signal" /* Allows handling incoming OS signals */
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/discovery"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/peer"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/ui-api"
 	"syscall" /* Contains low-level OS primitives (for SIGTERM) */
 	"time"    /* Provides time functionality (for shutdown timeout) */
@@ -29,7 +30,7 @@ func main() {
 	defer cancel()
 
 	/* Create the libp2p Node (logic in node.go) */
-	node, err := createLibp2pNode() /* Assuming no ctx needed based on previous state */
+	node, err := peer.CreateLibp2pNode() /* Assuming no ctx needed based on previous state */
 	if err != nil {
 		log.Fatalf("Failed to create libp2p node: %v", err)
 	}
@@ -37,7 +38,7 @@ func main() {
 	defer closeNode(node)
 
 	/* Log node details (logic presumably in node.go) */
-	logNodeDetails(node)
+	peer.LogNodeDetails(node)
 
 	/* Setup mDNS discovery (logic now in mDNS.go) */
 	/* We call the setup function, passing the created node */
@@ -47,8 +48,24 @@ func main() {
 		log.Printf("WARN: mDNS setup failed: %v. Local discovery might not work.", err)
 	}
 
-	/* Start the API Server (logic presumably in server.go) */
-	/* NOTE: Update startAPIServer if it needs to return the listener again for logging */
+	/* Setup DHT-based global discovery */
+	dht, err := discovery.SetupGlobalDiscovery(ctx, node)
+	if err != nil {
+		/* Log warning but continue if DHT setup fails */
+		log.Printf("WARN: Global DHT discovery setup failed: %v. Global discovery might not work.", err)
+	} else {
+		/* Defer DHT shutdown for cleanup */
+		defer func() {
+			log.Println("Closing DHT...")
+			if err := dht.Close(); err != nil {
+				log.Printf("Error closing DHT: %v", err)
+			} else {
+				log.Println("DHT closed successfully.")
+			}
+		}()
+	}
+
+	/* Start the API Server */
 	listener, apiServer, err := ui_api.StartAPIServer(ctx, apiAddr, node)
 	if err != nil {
 		log.Fatalf("Failed to start API server: %v", err)
