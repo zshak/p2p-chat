@@ -2,7 +2,6 @@ package peer
 
 import (
 	"fmt"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"log"
 	"time"
@@ -64,7 +63,7 @@ func CreateLibp2pNode() (host.Host, error) {
 		libp2p.EnableHolePunching(),
 
 		libp2p.EnableRelayService(),
-		libp2p.EnableAutoRelayWithStaticRelays(dht.GetDefaultBootstrapPeerAddrInfos()),
+		//libp2p.EnableAutoRelayWithStaticRelays(dht.GetDefaultBootstrapPeerAddrInfos()),
 	)
 
 	// Check if node creation failed.
@@ -92,7 +91,7 @@ func LogNodeDetails(node host.Host) {
 
 func PrintConnectedPeers(node host.Host) {
 	for {
-		time.Sleep(10 * time.Second)
+		time.Sleep(30 * time.Second)
 		log.Printf("connected peers of Peer ID %s are:", node.ID())
 		for _, peerId := range node.Network().Peers() {
 			log.Printf("  %s", peerId)
