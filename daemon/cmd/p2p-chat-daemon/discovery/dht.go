@@ -40,13 +40,18 @@ func addrInfosFromStrings(addrStrings []string) []p2pPeer.AddrInfo {
 }
 
 // SetupGlobalDiscovery initializes the DHT and discovery service for global peer finding
-func SetupGlobalDiscovery(ctx context.Context, node host.Host) (*dht.IpfsDHT, error) {
-	log.Println("Setting up global DHT discovery...")
+func SetupGlobalDiscovery(ctx context.Context, node host.Host, shouldUsePublicBts bool) (*dht.IpfsDHT, error) {
+	if shouldUsePublicBts {
+		defaultBootstrapPeers = dht.GetDefaultBootstrapPeerAddrInfos()
+		log.Println("Setting up global DHT discovery with public bootstrap peers...")
+	} else {
+		log.Println("Setting up global DHT discovery with private bootstrap peers...")
+	}
 
 	// Create a DHT client mode or server mode based on need
 	kadDHT, err := dht.New(ctx, node,
 		dht.Mode(dht.ModeServer),
-		dht.ProtocolPrefix(dhtProtocol),
+		//dht.ProtocolPrefix(dhtProtocol),
 		dht.BootstrapPeers(defaultBootstrapPeers...),
 	)
 	if err != nil {

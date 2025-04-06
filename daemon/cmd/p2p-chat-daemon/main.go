@@ -1,7 +1,8 @@
 package main
 
 import (
-	"context"   /* Used for managing cancellation signals */
+	"context" /* Used for managing cancellation signals */
+	"flag"
 	"fmt"       /* For printing formatted output */
 	"log"       /* For logging messages */
 	"os"        /* Provides OS functionality (like signals) */
@@ -23,6 +24,9 @@ const apiAddr = "127.0.0.1:0"
 /* NOTE: discoveryServiceTag is now defined in mDNS.go */
 
 func main() {
+	usePublicBootstraps := flag.Bool("pub", false, "Use public bootstrap nodes")
+	flag.Parse()
+
 	fmt.Println("Starting P2P Chat Daemon...")
 
 	/* Setup Context for cancellation */
@@ -49,7 +53,7 @@ func main() {
 	//}
 
 	/* Setup DHT-based global discovery */
-	dht, err := discovery.SetupGlobalDiscovery(ctx, node)
+	dht, err := discovery.SetupGlobalDiscovery(ctx, node, *usePublicBootstraps)
 	if err != nil {
 		/* Log warning but continue if DHT setup fails */
 		log.Printf("WARN: Global DHT discovery setup failed: %v. Global discovery might not work.", err)
