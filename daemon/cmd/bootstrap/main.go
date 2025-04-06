@@ -18,10 +18,9 @@ import (
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 )
 
-// The SAME protocol prefix used in your main application
 const dhtProtocol = "/p2p-chat-daemon/kad/1.0.0"
 
-// Function to load or generate a private key
+// getHostKey loads or generates a private key
 func getHostKey(keyPath string) (crypto.PrivKey, error) {
 	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
 		log.Printf("Generating new host key: %s\n", keyPath)
@@ -64,15 +63,18 @@ func main() {
 	node, err := libp2p.New(
 		libp2p.ListenAddrStrings(*listenAddr),
 		libp2p.Identity(privKey),
-		libp2p.Security(libp2ptls.ID, libp2ptls.New), // Add TLS security transport
-		libp2p.Security(noise.ID, noise.New),         // Add Noise security transport
-		// Add other options like NAT management if needed (libp2p.EnableAutoRelay(), etc.)
-		// but for a bootstrap node with a public IP, it might not be strictly necessary.
+		libp2p.Security(libp2ptls.ID, libp2ptls.New),
+		libp2p.Security(noise.ID, noise.New),
 	)
 	if err != nil {
 		log.Fatalf("Failed to create libp2p host: %v", err)
 	}
-	defer node.Close()
+	defer func(node host.Host) {
+		err := node.Close()
+		if err != nil {
+			log.Fatalf("Failed to close node: %v", err)
+		}
+	}(node)
 
 	log.Printf("Bootstrap Node Host created with ID: %s", node.ID())
 	log.Println("Listening addresses:")
@@ -80,22 +82,16 @@ func main() {
 		log.Printf("- %s/p2p/%s\n", addr, node.ID())
 	}
 
-	// Create and start the Kademlia DHT in Server mode
-	// **IMPORTANT**: Use the SAME ProtocolPrefix as your main application
 	kadDHT, err := dht.New(ctx, node,
-		dht.Mode(dht.ModeServer),        // This node is a DHT server
-		dht.ProtocolPrefix(dhtProtocol), // Use the custom protocol prefix
-		// No need to specify bootstrap peers for the bootstrap node itself,
-		// unless you want bootstrap nodes to connect to each other.
-		// For simplicity, we'll omit it here. They will discover each other
-		// if other nodes connect to them and share routing info.
+		dht.Mode(dht.ModeServer), // This node is a DHT server
+		dht.ProtocolPrefix(dhtProtocol),
+		// No need to specify bootstrap nodes, since they will automatically
+		// discover each other through clients
 	)
 	if err != nil {
 		log.Fatalf("Failed to create DHT: %v", err)
 	}
 
-	// Bootstrap the DHT. In server mode, this makes it ready to respond.
-	// It won't actively connect outward unless peers are provided or discovered.
 	if err = kadDHT.Bootstrap(ctx); err != nil {
 		log.Fatalf("Failed to bootstrap DHT: %v", err)
 	}
@@ -105,7 +101,6 @@ func main() {
 
 	go PrintConnectedPeers(node)
 
-	// Keep the node running until interrupted
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh

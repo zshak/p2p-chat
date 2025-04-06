@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"github.com/libp2p/go-libp2p/core/network"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -139,6 +140,10 @@ func findAndConnectPeers(ctx context.Context, node host.Host, discovery *routing
 	for peer := range peerChan {
 		// Skip if no addresses or it's ourselves
 		if len(peer.Addrs) == 0 || peer.ID == node.ID() {
+			continue
+		}
+
+		if node.Network().Connectedness(peer.ID) == network.Connected {
 			continue
 		}
 
