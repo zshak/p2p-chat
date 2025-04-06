@@ -14,15 +14,29 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
-// Common bootstrap nodes that your application will use
-// These are well-known libp2p bootstrap nodes - might want to run one just for this app for Prod
-var defaultBootstrapPeers = dht.GetDefaultBootstrapPeerAddrInfos()
+var defaultBootstrapPeers = addrInfosFromStrings([]string{
+	fmt.Sprintf("/ip4/13.61.254.164/tcp/4001/p2p/12D3KooWFujV1a69zhXj7DZeQGKh96ubEVvPBqptHAGYpd6TGdFn"),
+	fmt.Sprintf("/ip4/51.21.217.209/tcp/4001/p2p/12D3KooWDW4onEGqyg7Tu9HP8zgnJKZvbo2hgPin63XSVVTsd2eN"),
+})
 
 // The namespace for our DHT routing
 const dhtProtocol = "/p2p-chat-daemon/kad/1.0.0"
 
 // The service name for our application
 const discoveryServiceName = "p2p-chat-daemon"
+
+func addrInfosFromStrings(addrStrings []string) []p2pPeer.AddrInfo {
+	var addrInfos []p2pPeer.AddrInfo
+	for _, addrStr := range addrStrings {
+		addrInfo, err := p2pPeer.AddrInfoFromString(addrStr)
+		if err != nil {
+			log.Printf("Error parsing bootstrap peer addr %s: %v", addrStr, err)
+			continue // Skip invalid addresses
+		}
+		addrInfos = append(addrInfos, *addrInfo)
+	}
+	return addrInfos
+}
 
 // SetupGlobalDiscovery initializes the DHT and discovery service for global peer finding
 func SetupGlobalDiscovery(ctx context.Context, node host.Host) (*dht.IpfsDHT, error) {
@@ -38,15 +52,15 @@ func SetupGlobalDiscovery(ctx context.Context, node host.Host) (*dht.IpfsDHT, er
 		return nil, fmt.Errorf("failed to create DHT: %w", err)
 	}
 
+	// Bootstrap the DHT to start discovering peers
+	if err = kadDHT.Bootstrap(ctx); err != nil {
+		return nil, fmt.Errorf("failed to bootstrap DHT: %w", err)
+	}
+
 	// Connect to bootstrap peers
 	if err = connectToBootstrapPeers(ctx, node, defaultBootstrapPeers); err != nil {
 		log.Printf("Warning: %v", err)
 		// Continue anyway, as we might connect to some later
-	}
-
-	// Bootstrap the DHT to start discovering peers
-	if err = kadDHT.Bootstrap(ctx); err != nil {
-		return nil, fmt.Errorf("failed to bootstrap DHT: %w", err)
 	}
 
 	// Start discovering peers regularly
@@ -60,6 +74,8 @@ func SetupGlobalDiscovery(ctx context.Context, node host.Host) (*dht.IpfsDHT, er
 func startDiscoveryAdvertisement(ctx context.Context, node host.Host, dht *dht.IpfsDHT) {
 	// Create a discovery service that uses the DHT to find peers
 	discovery := routing.NewRoutingDiscovery(dht)
+
+	waitForDHTReadiness(ctx, dht)
 
 	// Advertise our presence
 	_, err := discovery.Advertise(ctx, discoveryServiceName)
@@ -80,6 +96,27 @@ func startDiscoveryAdvertisement(ctx context.Context, node host.Host, dht *dht.I
 			return
 		case <-ticker.C:
 			findAndConnectPeers(ctx, node, discovery)
+		}
+	}
+}
+
+// Wait for the DHT to be minimally ready before advertising
+func waitForDHTReadiness(ctx context.Context, dht *dht.IpfsDHT) {
+	// Try to get peers from the DHT until we have at least one
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			// Check if we have any peers in the routing table
+			peers := dht.RoutingTable().ListPeers()
+			if len(peers) > 0 {
+				log.Printf("DHT has %d peers in routing table, ready for advertising", len(peers))
+				return
+			}
+
+			log.Println("Waiting for DHT to be ready...")
+			time.Sleep(5 * time.Second)
 		}
 	}
 }

@@ -2,6 +2,7 @@ package peer
 
 import (
 	"fmt"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"log"
 	"time"
@@ -61,6 +62,9 @@ func CreateLibp2pNode() (host.Host, error) {
 
 		// Enable hole punching for NAT traversal
 		libp2p.EnableHolePunching(),
+
+		libp2p.EnableRelayService(),
+		libp2p.EnableAutoRelayWithStaticRelays(dht.GetDefaultBootstrapPeerAddrInfos()),
 	)
 
 	// Check if node creation failed.
