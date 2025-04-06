@@ -42,11 +42,11 @@ func main() {
 
 	/* Setup mDNS discovery (logic now in mDNS.go) */
 	/* We call the setup function, passing the created node */
-	err = discovery.SetupMDNSDiscovery(node)
-	if err != nil {
-		/* Log warning but continue if mDNS fails */
-		log.Printf("WARN: mDNS setup failed: %v. Local discovery might not work.", err)
-	}
+	//err = discovery.SetupMDNSDiscovery(node)
+	//if err != nil {
+	//	/* Log warning but continue if mDNS fails */
+	//	log.Printf("WARN: mDNS setup failed: %v. Local discovery might not work.", err)
+	//}
 
 	/* Setup DHT-based global discovery */
 	dht, err := discovery.SetupGlobalDiscovery(ctx, node)
