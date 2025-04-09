@@ -2,6 +2,7 @@ package peer
 
 import (
 	"fmt"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"log"
 	"time"
@@ -13,7 +14,11 @@ import (
 )
 
 /* CreateLibp2pNode initializes and returns a new libp2p Host */
-func CreateLibp2pNode() (host.Host, error) {
+func CreateLibp2pNode(privKey crypto.PrivKey) (host.Host, error) {
+	if privKey == nil {
+		return nil, fmt.Errorf("cannot create node with nil private key")
+	}
+
 	log.Println("Initializing libp2p node...")
 
 	// Define the listening addresses for the node.
@@ -44,6 +49,8 @@ func CreateLibp2pNode() (host.Host, error) {
 	// It takes Option functions to configure the node.
 	node, err := libp2p.New(
 		// Listen on multiple addresses
+		libp2p.Identity(privKey),
+
 		libp2p.ListenAddrs(multiaddrs...),
 
 		// Enable multiple security protocols for broader compatibility
@@ -63,7 +70,6 @@ func CreateLibp2pNode() (host.Host, error) {
 		libp2p.EnableHolePunching(),
 
 		libp2p.EnableRelayService(),
-		//libp2p.EnableAutoRelayWithStaticRelays(dht.GetDefaultBootstrapPeerAddrInfos()),
 	)
 
 	// Check if node creation failed.

@@ -20,10 +20,8 @@ var defaultBootstrapPeers = addrInfosFromStrings([]string{
 	fmt.Sprintf("/ip4/51.21.217.209/tcp/4001/p2p/12D3KooWDW4onEGqyg7Tu9HP8zgnJKZvbo2hgPin63XSVVTsd2eN"),
 })
 
-// The namespace for our DHT routing
 const dhtProtocol = "/p2p-chat-daemon/kad/1.0.0"
 
-// The service name for our application
 const discoveryServiceName = "p2p-chat-daemon"
 
 func addrInfosFromStrings(addrStrings []string) []p2pPeer.AddrInfo {
@@ -32,7 +30,7 @@ func addrInfosFromStrings(addrStrings []string) []p2pPeer.AddrInfo {
 		addrInfo, err := p2pPeer.AddrInfoFromString(addrStr)
 		if err != nil {
 			log.Printf("Error parsing bootstrap peer addr %s: %v", addrStr, err)
-			continue // Skip invalid addresses
+			continue
 		}
 		addrInfos = append(addrInfos, *addrInfo)
 	}
@@ -58,7 +56,7 @@ func SetupGlobalDiscovery(ctx context.Context, node host.Host, shouldUsePublicBt
 	// Create a DHT client mode or server mode based on need
 	kadDHT, err := dht.New(ctx, node,
 		dht.Mode(dht.ModeAuto),
-		dht.ProtocolPrefix(dhtProtocol),
+		//dht.ProtocolPrefix(dhtProtocol),
 		dht.BootstrapPeers(defaultBootstrapPeers...),
 	)
 	if err != nil {
@@ -85,7 +83,6 @@ func SetupGlobalDiscovery(ctx context.Context, node host.Host, shouldUsePublicBt
 
 // startDiscoveryAdvertisement continuously advertises our presence and discovers peers
 func startDiscoveryAdvertisement(ctx context.Context, node host.Host, dht *dht.IpfsDHT) {
-	// Create a discovery service that uses the DHT to find peers
 	discovery := routing.NewRoutingDiscovery(dht)
 
 	waitForDHTReadiness(ctx, dht)
