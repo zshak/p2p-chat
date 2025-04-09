@@ -47,10 +47,13 @@ func main() {
 
 	setupCloseHandler(cancel, ctx)
 
-	HandleShutdown(apiServer)
+	HandleShutdown(apiServer, appState)
 }
 
-func HandleShutdown(apiServer *http.Server) {
+func HandleShutdown(apiServer *http.Server, state *core.AppState) {
+	/* --- Graceful Shutdown Sequence --- */
+	log.Println("Shutting down daemon...")
+
 	/* Shutdown API server */
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
@@ -61,7 +64,10 @@ func HandleShutdown(apiServer *http.Server) {
 		log.Println("API server stopped.")
 	}
 
-	/* Node shutdown handled by defer */
+	state.Mu.Lock()
+
+	closeNode(state.Node)
+
 	log.Println("Daemon shut down gracefully.")
 }
 
@@ -74,8 +80,7 @@ func setupCloseHandler(cancel context.CancelFunc, ctx context.Context) {
 		sig := <-c
 		log.Printf("\r- Received signal %s. Triggering shutdown...", sig)
 		cancel()
-	}() /* --- Graceful Shutdown Sequence --- */
-	log.Println("Shutting down daemon...")
+	}()
 
 	/* Block until termination signal received */
 	<-ctx.Done()
@@ -156,7 +161,6 @@ func initializeP2P(ctx context.Context, appState *core.AppState, usePublicDHT bo
 		appState.Mu.Unlock()
 		panic(appState.LastError)
 	}
-	defer closeNode(node)
 
 	appState.Mu.Lock()
 	appState.Node = node
@@ -195,14 +199,12 @@ func initializeP2P(ctx context.Context, appState *core.AppState, usePublicDHT bo
 
 /* closeNode provides a dedicated function to close the node, called via defer. */
 func closeNode(node host.Host) {
-	log.Println("Closing libp2p node...")
-	if err := node.Close(); err != nil {
-		log.Printf("Error closing libp2p node: %v", err)
-	} else {
-		log.Println("Libp2p node closed.")
+	if node != nil {
+		log.Println("Closing libp2p node...")
+		if err := node.Close(); err != nil {
+			log.Printf("Error closing libp2p node: %v", err)
+		} else {
+			log.Println("Libp2p node closed.")
+		}
 	}
 }
-
-/* NOTE: discoveryNotifee struct and HandlePeerFound method are now in mDNS.go */
-/* NOTE: Assuming createLibp2pNode, logNodeDetails, startAPIServer are defined */
-/* in other files (node.go, server.go etc.) within the same 'main' package. */
