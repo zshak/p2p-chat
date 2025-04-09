@@ -15,9 +15,9 @@ import (
 
 /* CreateLibp2pNode initializes and returns a new libp2p Host */
 func CreateLibp2pNode(privKey crypto.PrivKey) (host.Host, error) {
-	if privKey == nil {
-		return nil, fmt.Errorf("cannot create node with nil private key")
-	}
+	//if privKey == nil {
+	//	return nil, fmt.Errorf("cannot create node with nil private key")
+	//}
 
 	log.Println("Initializing libp2p node...")
 
@@ -49,7 +49,7 @@ func CreateLibp2pNode(privKey crypto.PrivKey) (host.Host, error) {
 	// It takes Option functions to configure the node.
 	node, err := libp2p.New(
 		// Listen on multiple addresses
-		libp2p.Identity(privKey),
+		//libp2p.Identity(privKey),
 
 		libp2p.ListenAddrs(multiaddrs...),
 

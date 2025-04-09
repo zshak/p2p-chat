@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"fmt"
+	"github.com/libp2p/go-libp2p/core/network"
 	"log"
 	"net/http"
 	"os"
@@ -14,6 +16,7 @@ import (
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/peer"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/ui-api"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -43,7 +46,7 @@ func main() {
 
 	go initializeP2P(ctx, appState, *usePublicBootstraps)
 
-	WaitForUserAuthenticationOrRegistration(appState)
+	//WaitForUserAuthenticationOrRegistration(appState)
 
 	setupCloseHandler(cancel, ctx)
 
@@ -129,27 +132,27 @@ func getOrCreateAppDataDir() (error, string) {
 
 // This function runs in a separate goroutine and waits for the key signal
 func initializeP2P(ctx context.Context, appState *core.AppState, usePublicDHT bool) {
-	log.Println("P2P Initializer: Waiting for key and password signal...")
-	select {
-	case <-appState.KeyReadyChan:
-		log.Println("P2P Initializer: Key signal received.")
-	case <-ctx.Done():
-		log.Println("P2P Initializer: Shutdown signal received before key was ready.")
-		return
-	}
-
-	appState.Mu.Lock()
-	if appState.PrivKey == nil {
-		appState.State = core.StateError
-		appState.LastError = fmt.Errorf("key signal received but private key is nil")
-		log.Println("P2P Initializer: ERROR - Key signal received but private key is nil")
-		appState.Mu.Unlock()
-		panic(appState.LastError)
-	}
-
-	appState.State = core.StateInitializingP2P
+	//log.Println("P2P Initializer: Waiting for key and password signal...")
+	//select {
+	//case <-appState.KeyReadyChan:
+	//	log.Println("P2P Initializer: Key signal received.")
+	//case <-ctx.Done():
+	//	log.Println("P2P Initializer: Shutdown signal received before key was ready.")
+	//	return
+	//}
+	//
+	//appState.Mu.Lock()
+	//if appState.PrivKey == nil {
+	//	appState.State = core.StateError
+	//	appState.LastError = fmt.Errorf("key signal received but private key is nil")
+	//	log.Println("P2P Initializer: ERROR - Key signal received but private key is nil")
+	//	appState.Mu.Unlock()
+	//	panic(appState.LastError)
+	//}
+	//
+	//appState.State = core.StateInitializingP2P
 	privKey := appState.PrivKey
-	appState.Mu.Unlock()
+	//appState.Mu.Unlock()
 
 	log.Println("P2P Initializer: Creating libp2p node...")
 	node, err := peer.CreateLibp2pNode(privKey)
@@ -166,6 +169,9 @@ func initializeP2P(ctx context.Context, appState *core.AppState, usePublicDHT bo
 	appState.Node = node
 	appState.Mu.Unlock()
 
+	log.Printf("P2P Initializer: Registering chat protocol handler (%s)...", core.ChatProtocolID)
+	node.SetStreamHandler(core.ChatProtocolID, chatStreamHandler)
+
 	peer.LogNodeDetails(node)
 
 	// Setup mDNS Discovery
@@ -176,17 +182,17 @@ func initializeP2P(ctx context.Context, appState *core.AppState, usePublicDHT bo
 	}
 
 	// Setup DHT Discovery
-	log.Println("P2P Initializer: Setting up DHT discovery...")
-	dht, err := discovery.SetupGlobalDiscovery(ctx, node, usePublicDHT)
-	if err != nil {
-		log.Printf("P2P Initializer: WARN - Global DHT discovery setup failed: %v", err)
-		panic(err)
-	} else {
-		log.Println("P2P Initializer: DHT setup successful.")
-		appState.Mu.Lock()
-		appState.Dht = dht // Store DHT instance
-		appState.Mu.Unlock()
-	}
+	//log.Println("P2P Initializer: Setting up DHT discovery...")
+	//dht, err := discovery.SetupGlobalDiscovery(ctx, node, usePublicDHT)
+	//if err != nil {
+	//	log.Printf("P2P Initializer: WARN - Global DHT discovery setup failed: %v", err)
+	//	panic(err)
+	//} else {
+	//	log.Println("P2P Initializer: DHT setup successful.")
+	//	appState.Mu.Lock()
+	//	appState.Dht = dht // Store DHT instance
+	//	appState.Mu.Unlock()
+	//}
 
 	// P2P setup complete
 	appState.Mu.Lock()
@@ -207,4 +213,31 @@ func closeNode(node host.Host) {
 			log.Println("Libp2p node closed.")
 		}
 	}
+}
+
+// chatStreamHandler handles incoming chat streams.
+func chatStreamHandler(stream network.Stream) {
+	peerID := stream.Conn().RemotePeer()
+	log.Printf("Chat: Received new stream from %s", peerID.ShortString())
+
+	// Use a buffered reader for efficiency
+	reader := bufio.NewReader(stream)
+
+	// Read the message (assuming one message per stream, ending with newline for this simple example)
+	message, err := reader.ReadString('\n')
+	if err != nil {
+		log.Printf("Chat: Error reading from stream from %s: %v", peerID.ShortString(), err)
+		stream.Reset() // Abruptly close the stream on error
+		return
+	}
+
+	// Trim trailing newline
+	message = strings.TrimSpace(message)
+
+	// Log the received message (replace with actual message handling later)
+	log.Printf("Chat: Received message from %s: <<< %s >>>", peerID.ShortString(), message)
+
+	// For this simple test, we can just close the stream after reading.
+	// Alternatively, the sender could close it.
+	stream.Close() // Gracefully close our side
 }
