@@ -175,24 +175,24 @@ func initializeP2P(ctx context.Context, appState *core.AppState, usePublicDHT bo
 	peer.LogNodeDetails(node)
 
 	// Setup mDNS Discovery
-	log.Println("P2P Initializer: Setting up mDNS discovery...")
-	err = discovery.SetupMDNSDiscovery(node)
-	if err != nil {
-		log.Printf("P2P Initializer: WARN - mDNS setup failed: %v", err)
-	}
+	//log.Println("P2P Initializer: Setting up mDNS discovery...")
+	//err = discovery.SetupMDNSDiscovery(node)
+	//if err != nil {
+	//	log.Printf("P2P Initializer: WARN - mDNS setup failed: %v", err)
+	//}
 
 	// Setup DHT Discovery
-	//log.Println("P2P Initializer: Setting up DHT discovery...")
-	//dht, err := discovery.SetupGlobalDiscovery(ctx, node, usePublicDHT)
-	//if err != nil {
-	//	log.Printf("P2P Initializer: WARN - Global DHT discovery setup failed: %v", err)
-	//	panic(err)
-	//} else {
-	//	log.Println("P2P Initializer: DHT setup successful.")
-	//	appState.Mu.Lock()
-	//	appState.Dht = dht // Store DHT instance
-	//	appState.Mu.Unlock()
-	//}
+	log.Println("P2P Initializer: Setting up DHT discovery...")
+	dht, err := discovery.SetupGlobalDiscovery(ctx, node, usePublicDHT)
+	if err != nil {
+		log.Printf("P2P Initializer: WARN - Global DHT discovery setup failed: %v", err)
+		panic(err)
+	} else {
+		log.Println("P2P Initializer: DHT setup successful.")
+		appState.Mu.Lock()
+		appState.Dht = dht // Store DHT instance
+		appState.Mu.Unlock()
+	}
 
 	// P2P setup complete
 	appState.Mu.Lock()

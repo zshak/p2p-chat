@@ -4,13 +4,17 @@ import (
 	"fmt"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
+	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"log"
 	"time"
 
 	"github.com/libp2p/go-libp2p"                      // The main libp2p package
 	"github.com/libp2p/go-libp2p/core/host"            // The Host interface definition
 	tls "github.com/libp2p/go-libp2p/p2p/security/tls" // TLS for encryption
-	"github.com/multiformats/go-multiaddr"             // For parsing and creating multiaddresses
+	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
+	webrtc "github.com/libp2p/go-libp2p/p2p/transport/webrtc"
+	webtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
+	"github.com/multiformats/go-multiaddr" // For parsing and creating multiaddresses
 )
 
 /* CreateLibp2pNode initializes and returns a new libp2p Host */
@@ -70,6 +74,11 @@ func CreateLibp2pNode(privKey crypto.PrivKey) (host.Host, error) {
 		libp2p.EnableHolePunching(),
 
 		libp2p.EnableRelayService(),
+
+		libp2p.Transport(webtransport.New),
+		libp2p.Transport(quic.NewTransport),
+		libp2p.Transport(tcp.NewTCPTransport),
+		libp2p.Transport(webrtc.New),
 	)
 
 	// Check if node creation failed.
