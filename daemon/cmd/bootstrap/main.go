@@ -61,6 +61,8 @@ func main() {
 
 	// Create the libp2p host
 	node, err := libp2p.New(
+		libp2p.EnableNATService(),
+		libp2p.EnableRelayService(),
 		libp2p.ListenAddrStrings(*listenAddr),
 		libp2p.Identity(privKey),
 		libp2p.Security(libp2ptls.ID, libp2ptls.New),
