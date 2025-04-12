@@ -46,6 +46,7 @@ func SetupGlobalDiscovery(ctx context.Context, node host.Host, shouldUsePublicBt
 	} else {
 		log.Println("Setting up global DHT discovery with private bootstrap peers...")
 	}
+	defaultBootstrapPeers = dht.GetDefaultBootstrapPeerAddrInfos()
 
 	resources := relayv2.DefaultResources()
 	resources.MaxReservations = 256
@@ -60,6 +61,7 @@ func SetupGlobalDiscovery(ctx context.Context, node host.Host, shouldUsePublicBt
 		//dht.ProtocolPrefix(dhtProtocol),
 		dht.BootstrapPeers(defaultBootstrapPeers...),
 	)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create DHT: %w", err)
 	}
