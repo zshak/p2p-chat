@@ -5,9 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/libp2p/go-libp2p/core/host"
-	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
-	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
-	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"log"
 	"os"
 	"os/signal"
@@ -17,12 +14,11 @@ import (
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
-	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 )
 
-//const dhtProtocol = "/p2p-chat-daemon/kad/1.0.1"
+const dhtProtocol = "/p2p-chat-daemon/kad/1.0.0"
 
 // getHostKey loads or generates a private key
 func getHostKey(keyPath string) (crypto.PrivKey, error) {
@@ -63,38 +59,14 @@ func main() {
 		log.Fatalf("Failed to get host key: %v", err)
 	}
 
-	limiter := rcmgr.NewFixedLimiter(rcmgr.InfiniteLimits)
-	rm, err := rcmgr.NewResourceManager(limiter)
-	if err != nil {
-		log.Fatalf("Failed to create resource manager: %v", err)
-	}
-	log.Println("Resource Manager created with InfiniteLimits (for testing).")
-	// ------------------------------------------------------------------------
-
-	// --- 2. Configure Relay Service Options with high/infinite limits ---
-	relayServiceOpts := []relayv2.Option{
-		relayv2.WithResources(relayv2.Resources{ // Use explicit Resources struct
-			// Settings for the relay node itself:
-			MaxReservations: 100000, // Allow many reservations
-			MaxCircuits:     10000,  // Allow many simultaneous relayed connections
-			BufferSize:      2048,   // Default buffer size per circuit
-		}),
-	}
-	log.Println("Relay Service configured with high/infinite resource limits (for testing).")
-	// --------------------------------------------------------------------
-
-	// --- 3. Create the libp2p host with RM and Relay options ---
+	// Create the libp2p host
 	node, err := libp2p.New(
-		libp2p.ResourceManager(rm),                     // Apply the resource manager
-		libp2p.EnableNATService(),                      // Still useful for AutoNAT probes
-		libp2p.EnableRelayService(relayServiceOpts...), // Apply configured relay service options
+		libp2p.EnableNATService(),
+		libp2p.EnableRelayService(),
 		libp2p.ListenAddrStrings(*listenAddr),
 		libp2p.Identity(privKey),
 		libp2p.Security(libp2ptls.ID, libp2ptls.New),
 		libp2p.Security(noise.ID, noise.New),
-		// Optional: Add transports if your clients might use them to connect *to* the bootstrap
-		libp2p.Transport(tcp.NewTCPTransport),
-		libp2p.Transport(quic.NewTransport), // Requires UDP port open
 	)
 	if err != nil {
 		log.Fatalf("Failed to create libp2p host: %v", err)
@@ -114,7 +86,7 @@ func main() {
 
 	kadDHT, err := dht.New(ctx, node,
 		dht.Mode(dht.ModeServer), // This node is a DHT server
-		//dht.ProtocolPrefix(dhtProtocol),
+		dht.ProtocolPrefix(dhtProtocol),
 		// No need to specify bootstrap nodes, since they will automatically
 		// discover each other through clients
 	)
