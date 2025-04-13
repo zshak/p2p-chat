@@ -15,7 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
-var defaultBootstrapPeers = addrInfosFromStrings([]string{
+var DefaultBootstrapPeers = addrInfosFromStrings([]string{
 	fmt.Sprintf("/ip4/13.61.254.164/tcp/4001/p2p/12D3KooWFujV1a69zhXj7DZeQGKh96ubEVvPBqptHAGYpd6TGdFn"),
 	fmt.Sprintf("/ip4/51.21.217.209/tcp/4001/p2p/12D3KooWDW4onEGqyg7Tu9HP8zgnJKZvbo2hgPin63XSVVTsd2eN"),
 })
@@ -39,12 +39,12 @@ func addrInfosFromStrings(addrStrings []string) []p2pPeer.AddrInfo {
 
 // SetupGlobalDiscovery initializes the DHT and discovery service for global peer finding
 func SetupGlobalDiscovery(ctx context.Context, node host.Host, shouldUsePublicBts bool) (*dht.IpfsDHT, error) {
-	if shouldUsePublicBts {
-		defaultBootstrapPeers = dht.GetDefaultBootstrapPeerAddrInfos()
-		log.Println("Setting up global DHT discovery with public bootstrap peers...")
-	} else {
-		log.Println("Setting up global DHT discovery with private bootstrap peers...")
-	}
+	//if shouldUsePublicBts {
+	//	DefaultBootstrapPeers = dht.GetDefaultBootstrapPeerAddrInfos()
+	//	log.Println("Setting up global DHT discovery with public bootstrap peers...")
+	//} else {
+	log.Println("Setting up global DHT discovery with private bootstrap peers...")
+	//}
 
 	//resources := relayv2.DefaultResources()
 	//resources.MaxReservations = 256
@@ -56,8 +56,8 @@ func SetupGlobalDiscovery(ctx context.Context, node host.Host, shouldUsePublicBt
 	// Create a DHT client mode or server mode based on need
 	kadDHT, err := dht.New(ctx, node,
 		dht.Mode(dht.ModeAuto),
-		//dht.ProtocolPrefix(dhtProtocol),
-		dht.BootstrapPeers(defaultBootstrapPeers...),
+		dht.ProtocolPrefix(dhtProtocol),
+		dht.BootstrapPeers(DefaultBootstrapPeers...),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create DHT: %w", err)
@@ -69,7 +69,7 @@ func SetupGlobalDiscovery(ctx context.Context, node host.Host, shouldUsePublicBt
 	}
 
 	// Connect to bootstrap peers
-	if err = connectToBootstrapPeers(ctx, node, defaultBootstrapPeers); err != nil {
+	if err = connectToBootstrapPeers(ctx, node, DefaultBootstrapPeers); err != nil {
 		log.Printf("Warning: %v", err)
 		// Continue anyway, as we might connect to some later
 	}

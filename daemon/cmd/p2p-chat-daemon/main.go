@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	golog "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/network"
 	"log"
 	"net/http"
@@ -29,6 +30,12 @@ const (
 )
 
 func main() {
+	//golog.SetLogLevel("dht", "debug")         // Very verbose DHT operations
+	//golog.SetLogLevel("dht/Provide", "debug") // Focus on Provide operations
+	//golog.SetLogLevel("discovery", "debug")   // Logs from routing discovery
+	golog.SetLogLevel("autonat", "debug")
+	golog.SetLogLevel("autorelay", "debug")
+
 	usePublicBootstraps := flag.Bool("pub", false, "Use public bootstrap nodes")
 	flag.Parse()
 
@@ -155,7 +162,7 @@ func initializeP2P(ctx context.Context, appState *core.AppState, usePublicDHT bo
 	//appState.Mu.Unlock()
 
 	log.Println("P2P Initializer: Creating libp2p node...")
-	node, err := peer.CreateLibp2pNode(privKey)
+	node, err := peer.CreateLibp2pNode(privKey, appState)
 	if err != nil {
 		log.Printf("P2P Initializer: ERROR - Failed to create libp2p node: %v", err)
 		appState.Mu.Lock()
@@ -175,24 +182,24 @@ func initializeP2P(ctx context.Context, appState *core.AppState, usePublicDHT bo
 	peer.LogNodeDetails(node)
 
 	// Setup mDNS Discovery
-	log.Println("P2P Initializer: Setting up mDNS discovery...")
-	err = discovery.SetupMDNSDiscovery(node)
-	if err != nil {
-		log.Printf("P2P Initializer: WARN - mDNS setup failed: %v", err)
-	}
+	//log.Println("P2P Initializer: Setting up mDNS discovery...")
+	//err = discovery.SetupMDNSDiscovery(node)
+	//if err != nil {
+	//	log.Printf("P2P Initializer: WARN - mDNS setup failed: %v", err)
+	//}
 
 	// Setup DHT Discovery
-	//log.Println("P2P Initializer: Setting up DHT discovery...")
-	//dht, err := discovery.SetupGlobalDiscovery(ctx, node, usePublicDHT)
-	//if err != nil {
-	//	log.Printf("P2P Initializer: WARN - Global DHT discovery setup failed: %v", err)
-	//	panic(err)
-	//} else {
-	//	log.Println("P2P Initializer: DHT setup successful.")
-	//	appState.Mu.Lock()
-	//	appState.Dht = dht // Store DHT instance
-	//	appState.Mu.Unlock()
-	//}
+	log.Println("P2P Initializer: Setting up DHT discovery...")
+	dht, err := discovery.SetupGlobalDiscovery(ctx, node, usePublicDHT)
+	if err != nil {
+		log.Printf("P2P Initializer: WARN - Global DHT discovery setup failed: %v", err)
+		panic(err)
+	} else {
+		log.Println("P2P Initializer: DHT setup successful.")
+		appState.Mu.Lock()
+		appState.Dht = dht // Store DHT instance
+		appState.Mu.Unlock()
+	}
 
 	// P2P setup complete
 	appState.Mu.Lock()
