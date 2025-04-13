@@ -155,7 +155,7 @@ func initializeP2P(ctx context.Context, appState *core.AppState, usePublicDHT bo
 	//appState.Mu.Unlock()
 
 	log.Println("P2P Initializer: Creating libp2p node...")
-	node, err := peer.CreateLibp2pNode(privKey, appState)
+	node, err := peer.CreateLibp2pNode(privKey)
 	if err != nil {
 		log.Printf("P2P Initializer: ERROR - Failed to create libp2p node: %v", err)
 		appState.Mu.Lock()
