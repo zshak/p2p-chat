@@ -13,6 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	p2pPeer "github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
+	relayv2 "github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 )
 
 var defaultBootstrapPeers = addrInfosFromStrings([]string{
@@ -45,19 +46,19 @@ func SetupGlobalDiscovery(ctx context.Context, node host.Host, shouldUsePublicBt
 	} else {
 		log.Println("Setting up global DHT discovery with private bootstrap peers...")
 	}
-	//defaultBootstrapPeers = dht.GetDefaultBootstrapPeerAddrInfos()
+	defaultBootstrapPeers = dht.GetDefaultBootstrapPeerAddrInfos()
 
-	//resources := relayv2.DefaultResources()
-	//resources.MaxReservations = 256
-	//_, err := relayv2.New(node, relayv2.WithResources(resources))
-	//if err != nil {
-	//	panic(err)
-	//}
+	resources := relayv2.DefaultResources()
+	resources.MaxReservations = 256
+	_, err := relayv2.New(node, relayv2.WithResources(resources))
+	if err != nil {
+		panic(err)
+	}
 
 	// Create a DHT client mode or server mode based on need
 	kadDHT, err := dht.New(ctx, node,
 		dht.Mode(dht.ModeAuto),
-		dht.ProtocolPrefix(dhtProtocol),
+		//dht.ProtocolPrefix(dhtProtocol),
 		dht.BootstrapPeers(defaultBootstrapPeers...),
 	)
 
