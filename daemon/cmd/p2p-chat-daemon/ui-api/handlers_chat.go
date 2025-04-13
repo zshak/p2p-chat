@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/libp2p/go-libp2p/core/network"
 	"log"
 	"net/http"
 	"time"
@@ -55,6 +56,38 @@ func (h *apiHandler) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	if targetPID == node.ID() {
 		http.Error(w, "Cannot send chat message to self", http.StatusBadRequest)
 		return
+	}
+
+	log.Printf("Chat API: Checking connectedness to %s", targetPID.ShortString())
+	connectedness := node.Network().Connectedness(targetPID)
+
+	if connectedness != network.Connected {
+		log.Printf("Chat API: Not connected to %s (State: %s). Attempting connection...", targetPID.ShortString(), connectedness)
+
+		// Need AddrInfo to connect. Get latest from Peerstore.
+		// Discovery should be populating this periodically.
+		addrInfo := node.Peerstore().PeerInfo(targetPID)
+		if len(addrInfo.Addrs) == 0 {
+			log.Printf("Chat API: No addresses found in Peerstore for %s. Cannot connect.", targetPID.ShortString())
+			http.Error(w, fmt.Sprintf("Cannot connect to peer %s: No known addresses", targetPID.ShortString()), http.StatusNotFound)
+			return
+		}
+
+		// Use a separate context and timeout for the connection attempt
+		connectCtx, connectCancel := context.WithTimeout(context.Background(), 60*time.Second) // Longer timeout for connect
+		defer connectCancel()
+
+		err = node.Connect(connectCtx, addrInfo) // Use the AddrInfo from Peerstore
+		if err != nil {
+			log.Printf("Chat API: Failed to connect to %s: %v", targetPID.ShortString(), err)
+			// Check for specific errors? e.g., no good addresses, relay errors from Connect
+			http.Error(w, fmt.Sprintf("Failed to establish connection with peer %s: %v", targetPID.ShortString(), err), http.StatusServiceUnavailable) // 503 might be suitable
+			return
+		}
+		log.Printf("Chat API: Successfully connected to %s.", targetPID.ShortString())
+		// Now we expect connectedness == network.Connected
+	} else {
+		log.Printf("Chat API: Already connected to %s.", targetPID.ShortString())
 	}
 
 	// --- Open Stream to Peer ---
