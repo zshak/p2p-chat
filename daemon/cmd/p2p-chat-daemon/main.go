@@ -33,7 +33,7 @@ func main() {
 	//golog.SetLogLevel("dht", "debug")         // Very verbose DHT operations
 	//golog.SetLogLevel("dht/Provide", "debug") // Focus on Provide operations
 	//golog.SetLogLevel("discovery", "debug")   // Logs from routing discovery
-	golog.SetLogLevel("autonat", "debug")
+	golog.SetLogLevel("*", "debug")
 	golog.SetLogLevel("autorelay", "debug")
 
 	usePublicBootstraps := flag.Bool("pub", false, "Use public bootstrap nodes")
