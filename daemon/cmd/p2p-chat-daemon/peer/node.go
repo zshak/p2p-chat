@@ -2,14 +2,12 @@ package peer
 
 import (
 	"fmt"
-	"github.com/caddyserver/certmagic"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"log"
 	"time"
 
-	p2pforge "github.com/ipshipyard/p2p-forge/client"
 	"github.com/libp2p/go-libp2p"                      // The main libp2p package
 	"github.com/libp2p/go-libp2p/core/host"            // The Host interface definition
 	tls "github.com/libp2p/go-libp2p/p2p/security/tls" // TLS for encryption
@@ -30,19 +28,10 @@ func CreateLibp2pNode(privKey crypto.PrivKey) (host.Host, error) {
 	// Define the listening addresses for the node.
 	// We'll listen on multiple interfaces for better connectivity
 	listenAddrs := []string{
-		"/ip4/0.0.0.0/tcp/0", // IPv4 TCP
-		"/ip6/::/tcp/0",      // IPv6 TCP
-		//"/ip4/0.0.0.0/udp/0/quic", // IPv4 QUIC for better NAT traversal
-		//"/ip6/::/udp/0/quic",      // IPv6 QUIC
-
-		"/ip4/0.0.0.0/udp/0/quic-v1",
-		"/ip4/0.0.0.0/udp/0/quic-v1/webtransport",
-		"/ip4/0.0.0.0/udp/0/webrtc-direct",
-		"/ip6/::/udp/0/quic-v1",
-		"/ip6/::/udp/0/quic-v1/webtransport",
-		"/ip6/::/udp/0/webrtc-direct",
-		fmt.Sprintf("/ip4/0.0.0.0/tcp/9095/tls/sni/*.%s/ws", p2pforge.DefaultForgeDomain),
-		fmt.Sprintf("/ip6/::/tcp/9095/tls/sni/*.%s/ws", p2pforge.DefaultForgeDomain),
+		"/ip4/0.0.0.0/tcp/0",      // IPv4 TCP
+		"/ip6/::/tcp/0",           // IPv6 TCP
+		"/ip4/0.0.0.0/udp/0/quic", // IPv4 QUIC for better NAT traversal
+		"/ip6/::/udp/0/quic",      // IPv6 QUIC
 	}
 
 	// Create multiaddrs from our strings
@@ -58,18 +47,6 @@ func CreateLibp2pNode(privKey crypto.PrivKey) (host.Host, error) {
 
 	if len(multiaddrs) == 0 {
 		return nil, fmt.Errorf("failed to create any valid listen multiaddrs")
-	}
-
-	certLoaded := make(chan bool, 1)
-
-	certManager, err := p2pforge.NewP2PForgeCertMgr(
-		p2pforge.WithCertificateStorage(&certmagic.FileStorage{Path: "p2p-forge-certs"}),
-		p2pforge.WithUserAgent("go-libp2p/example/autotls"),
-		p2pforge.WithCAEndpoint(p2pforge.DefaultCAEndpoint),
-		p2pforge.WithOnCertLoaded(func() { certLoaded <- true }), // Signal when cert is loaded
-	)
-	if err != nil {
-		panic(err)
 	}
 
 	// libp2p.New is the primary function to create a libp2p Host (our node).
@@ -103,8 +80,6 @@ func CreateLibp2pNode(privKey crypto.PrivKey) (host.Host, error) {
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(webrtc.New),
 	)
-
-	certManager.ProvideHost(node)
 
 	// Check if node creation failed.
 	if err != nil {
