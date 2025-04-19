@@ -15,6 +15,7 @@ import (
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/peer"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/storage"
 	uiapi "p2p-chat-daemon/cmd/p2p-chat-daemon/ui-api"
 	"syscall"
 	"time"
@@ -28,6 +29,7 @@ type Application struct {
 	chatService *chat.Service
 	cancel      context.CancelFunc
 	server      *http.Server
+	db          *storage.DB
 }
 
 func NewApplication(cfg *config.Config) (*Application, error) {
@@ -38,9 +40,16 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	appStateObs, err := appstate.NewObserver(appState, eventbus, ctx)
 
 	if err != nil {
+		cancel()
 		log.Fatal("app state observer startup failed", err)
 	}
 	appStateObs.Start()
+
+	db, err := storage.NewDB(cfg.AppDataPath)
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("failed to initialize database: %w", err)
+	}
 
 	chatHandler := chat.NewProtocolHandler(appState)
 
@@ -60,6 +69,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		chatService: chatHandler,
 		cancel:      cancel,
 		server:      server,
+		db:          db,
 	}
 
 	return app, nil

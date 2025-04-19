@@ -40,8 +40,9 @@ type APIConfig struct {
 
 // Config holds the overall application configuration.
 type Config struct {
-	P2P P2PConfig
-	API APIConfig
+	P2P         P2PConfig
+	API         APIConfig
+	AppDataPath string
 }
 
 // Load reads configuration from flags/env/files.
@@ -102,6 +103,7 @@ func Load() (*Config, error) {
 		API: APIConfig{
 			ListenAddr: *apiListenAddr,
 		},
+		AppDataPath: configDir,
 	}
 
 	return cfg, nil
