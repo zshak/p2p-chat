@@ -20,8 +20,8 @@ func (h *apiHandler) handleStatus(w http.ResponseWriter, r *http.Request) {
 		State: h.appState.State.String(),
 	}
 	if h.appState.Node != nil {
-		resp.PeerID = h.appState.Node.ID().String()
-		addrs := h.appState.Node.Addrs()
+		resp.PeerID = (*h.appState.Node).ID().String()
+		addrs := (*h.appState.Node).Addrs()
 		resp.ListenAddrs = make([]string, len(addrs))
 		for i, addr := range addrs {
 			resp.ListenAddrs[i] = fmt.Sprintf("%s/p2p/%s", addr.String(), resp.PeerID)

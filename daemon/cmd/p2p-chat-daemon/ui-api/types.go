@@ -14,3 +14,9 @@ type StatusResponse struct {
 type SetupRequest struct {
 	Password string `json:"password"`
 }
+
+// ChatMessageRequest defines the structure for sending a chat message via the API.
+type ChatMessageRequest struct {
+	TargetPeerID string `json:"target_peer_id"`
+	Message      string `json:"message"`
+}
