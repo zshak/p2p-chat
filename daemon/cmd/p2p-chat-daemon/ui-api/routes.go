@@ -12,4 +12,7 @@ func setupRoutes(mux *http.ServeMux, handler *apiHandler) {
 	// Setup endpoints
 	mux.HandleFunc("/setup/create-key", handler.handleCreateKey)
 	mux.HandleFunc("/setup/unlock-key", handler.handleUnlockKey)
+
+	mux.HandleFunc("/chat/send", handler.handleSendMessage)
+
 }
