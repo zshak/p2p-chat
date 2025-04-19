@@ -29,7 +29,7 @@ type Application struct {
 	chatService *chat.Service
 	cancel      context.CancelFunc
 	server      *http.Server
-	db          *storage.DB
+	messageRepo storage.MessageRepository
 }
 
 func NewApplication(cfg *config.Config) (*Application, error) {
@@ -37,7 +37,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	appState := core.NewAppState(cfg.P2P.PrivateKeyPath)
 
 	eventbus := bus.NewEventBus()
-	appStateObs, err := appstate.NewObserver(appState, eventbus, ctx)
+	appStateObs, err := appstate.NewConsumer(appState, eventbus, ctx)
 
 	if err != nil {
 		cancel()
@@ -51,7 +51,14 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		return nil, fmt.Errorf("failed to initialize database: %w", err)
 	}
 
-	chatHandler := chat.NewProtocolHandler(appState)
+	msgRepo, err := storage.NewSQLiteMessageRepository(db)
+	if err != nil {
+		db.Close()
+		cancel()
+		return nil, fmt.Errorf("failed to create message repository: %w", err)
+	}
+
+	chatHandler := chat.NewProtocolHandler(appState, eventbus)
 
 	_, server, err := uiapi.StartAPIServer(ctx, cfg.API.ListenAddr, appState, eventbus, chatHandler)
 	eventbus.PublishAsync(events.ApiStartedEvent{})
@@ -69,7 +76,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		chatService: chatHandler,
 		cancel:      cancel,
 		server:      server,
-		db:          db,
+		messageRepo: msgRepo,
 	}
 
 	return app, nil
@@ -77,13 +84,13 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 
 func (app *Application) Start() error {
 	keyReadyChan := make(chan struct{})
-	obs, err := NewObserver(app.appstate, app.eventBus, keyReadyChan, app.ctx)
+	consumer, err := NewConsumer(app.appstate, app.eventBus, keyReadyChan, app.ctx)
 
 	if err != nil {
 		return err
 	}
 
-	obs.Start()
+	consumer.Start()
 
 	log.Println("waiting for key signal")
 	select {
@@ -109,11 +116,14 @@ func (app *Application) Start() error {
 	err = discoveryManager.Initialize()
 	app.eventBus.PublishAsync(events.SetupCompletedEvent{})
 
-	app.chatService.Register()
-
+	chatCons, err := chat.NewConsumer(app.appstate, app.eventBus, app.messageRepo, app.ctx)
 	if err != nil {
+		log.Println("Failed to create chat consumer")
 		return err
 	}
+
+	go chatCons.Start()
+	go app.chatService.Register()
 
 	return nil
 }
