@@ -1,19 +1,9 @@
 package ui_api
 
 import (
-	"bufio"
-	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/libp2p/go-libp2p/core/network"
-	"log"
 	"net/http"
-	"time"
-
-	// Import core types and protocol ID
-	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
-
-	"github.com/libp2p/go-libp2p/core/peer" // Need peer package
 )
 
 // handleSendMessage handles POST requests to /chat/send
@@ -34,105 +24,14 @@ func (h *apiHandler) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse PeerID
-	targetPID, err := peer.Decode(req.TargetPeerID)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Invalid target PeerID format: %v", err), http.StatusBadRequest)
-		return
-	}
-
-	// Get node from app state and check if running
-	h.appState.Mu.Lock()
-	node := h.appState.Node
-	state := h.appState.State
-	h.appState.Mu.Unlock() // Unlock before potentially blocking P2P operation
-
-	if state != core.StateRunning || node == nil {
-		http.Error(w, fmt.Sprintf("Node is not ready (state: %s)", state), http.StatusServiceUnavailable)
-		return
-	}
-
-	// Don't send to self
-	if targetPID == node.ID() {
-		http.Error(w, "Cannot send chat message to self", http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("Chat API: Checking connectedness to %s", targetPID.ShortString())
-	connectedness := node.Network().Connectedness(targetPID)
-
-	if connectedness != network.Connected {
-		log.Printf("Chat API: Not connected to %s (State: %s). Attempting connection...", targetPID.ShortString(), connectedness)
-
-		// Need AddrInfo to connect. Get latest from Peerstore.
-		// Discovery should be populating this periodically.
-		addrInfo := node.Peerstore().PeerInfo(targetPID)
-		if len(addrInfo.Addrs) == 0 {
-			log.Printf("Chat API: No addresses found in Peerstore for %s. Cannot connect.", targetPID.ShortString())
-			http.Error(w, fmt.Sprintf("Cannot connect to peer %s: No known addresses", targetPID.ShortString()), http.StatusNotFound)
-			return
-		}
-
-		// Use a separate context and timeout for the connection attempt
-		connectCtx, connectCancel := context.WithTimeout(context.Background(), 60*time.Second) // Longer timeout for connect
-		defer connectCancel()
-
-		err = node.Connect(connectCtx, addrInfo) // Use the AddrInfo from Peerstore
-		if err != nil {
-			log.Printf("Chat API: Failed to connect to %s: %v", targetPID.ShortString(), err)
-			// Check for specific errors? e.g., no good addresses, relay errors from Connect
-			http.Error(w, fmt.Sprintf("Failed to establish connection with peer %s: %v", targetPID.ShortString(), err), http.StatusServiceUnavailable) // 503 might be suitable
-			return
-		}
-		log.Printf("Chat API: Successfully connected to %s.", targetPID.ShortString())
-		// Now we expect connectedness == network.Connected
-	} else {
-		log.Printf("Chat API: Already connected to %s.", targetPID.ShortString())
-	}
-
-	// --- Open Stream to Peer ---
-	log.Printf("Chat API: Attempting to open stream to %s for protocol %s", targetPID.ShortString(), core.ChatProtocolID)
-
-	// Use a timeout for stream opening
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	ctx = network.WithAllowLimitedConn(ctx, "mito")
-	defer cancel()
-
-	stream, err := node.NewStream(ctx, targetPID, core.ChatProtocolID)
-	if err != nil {
-		log.Printf("Chat API: Failed to open stream to %s: %v", targetPID.ShortString(), err)
-		http.Error(w, fmt.Sprintf("Failed to connect/open stream to peer %s: %v", targetPID.ShortString(), err), http.StatusNotFound) // 404 might indicate peer not found/reachable
-		return
-	}
-	log.Printf("Chat API: Stream opened successfully to %s", targetPID.ShortString())
-
-	// --- Send Message ---
-	writer := bufio.NewWriter(stream)
-	_, err = writer.WriteString(req.Message + "\n") // Add newline delimiter
-	if err == nil {
-		err = writer.Flush() // Ensure data is sent
-	}
+	err := h.chatService.SendMessage(req.TargetPeerID, req.Message)
 
 	if err != nil {
-		log.Printf("Chat API: Failed to write message to %s: %v", targetPID.ShortString(), err)
-		stream.Reset() // Reset stream on write error
-		http.Error(w, fmt.Sprintf("Failed to send message: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error sending message: %v", err), http.StatusInternalServerError)
 		return
-	}
-
-	log.Printf("Chat API: Message sent successfully to %s", targetPID.ShortString())
-
-	// --- Close Stream (optional, good practice for simple request/response) ---
-	// Closing the stream signals the other side we're done writing.
-	// Our simple receiver closes after reading one line anyway.
-	err = stream.Close()
-	if err != nil {
-		log.Printf("Chat API: Error closing stream to %s: %v", targetPID.ShortString(), err)
-		// Continue anyway, message was sent
 	}
 
 	// --- Send Success Response ---
 	w.WriteHeader(http.StatusOK)
-	// Optionally return the message sent or just a simple success
-	fmt.Fprintf(w, "Message sent to %s", targetPID.ShortString())
+	fmt.Fprintf(w, "Message sent successfully")
 }

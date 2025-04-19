@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
 
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/identity"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
@@ -40,26 +41,12 @@ func (h *apiHandler) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 
 	privKey, err := identity.GenerateAndSaveEncryptedKey(keyPath, []byte(req.Password))
 	if err != nil {
-		h.eventBus.Publish(core.KeyGenerationFailedEvent{Err: err})
+		h.eventBus.PublishAsync(events.KeyGenerationFailedEvent{Err: err})
 		http.Error(w, fmt.Sprintf("Failed to create key: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	h.eventBus.Publish(core.KeyGeneratedEvent{Key: privKey})
-
-	//// Key created
-	//h.appState.Mu.Lock()
-	//h.appState.PrivKey = privKey
-	//if h.appState.State == core.StateWaitingForKey {
-	//	select {
-	//	case <-h.appState.KeyReadyChan:
-	//		// channel already closed
-	//	default:
-	//		// else close
-	//		close(h.appState.KeyReadyChan)
-	//	}
-	//}
-	//h.appState.Mu.Unlock()
+	h.eventBus.PublishAsync(events.KeyGeneratedEvent{Key: privKey})
 
 	log.Printf("API: Key created and saved successfully.")
 	w.WriteHeader(http.StatusCreated)
@@ -96,26 +83,13 @@ func (h *apiHandler) handleUnlockKey(w http.ResponseWriter, r *http.Request) {
 	// Attempt to load and decrypt
 	privKey, err := identity.LoadAndDecryptKey(keyPath, []byte(req.Password))
 	if err != nil {
-		h.eventBus.Publish(core.KeyLoadingFailedEvent{Err: err})
+		h.eventBus.PublishAsync(events.KeyLoadingFailedEvent{Err: err})
 		http.Error(w, fmt.Sprintf("Failed to unlock key: %v", err), http.StatusUnauthorized)
 		return
 	}
 
 	// Key unlocked successfully
-	h.eventBus.Publish(core.UserAuthenticatedEvent{Key: privKey})
-
-	//h.appState.Mu.Lock()
-	//h.appState.PrivKey = privKey
-	//if h.appState.State == core.StateWaitingForPassword {
-	//	select {
-	//	case <-h.appState.KeyReadyChan:
-	//		// channel closed
-	//	default:
-	//		// else close
-	//		close(h.appState.KeyReadyChan)
-	//	}
-	//}
-	//h.appState.Mu.Unlock()
+	h.eventBus.PublishAsync(events.UserAuthenticatedEvent{Key: privKey})
 
 	log.Printf("API: Key unlocked successfully.")
 	w.WriteHeader(http.StatusOK)

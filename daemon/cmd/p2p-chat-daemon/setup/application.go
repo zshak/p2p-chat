@@ -4,20 +4,30 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/appstate"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/chat"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/config"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/discovery"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/peer"
 	uiapi "p2p-chat-daemon/cmd/p2p-chat-daemon/ui-api"
+	"syscall"
+	"time"
 )
 
 type Application struct {
-	ctx      context.Context
-	eventBus *bus.EventBus
-	config   *config.Config
-	appstate *core.AppState
+	ctx         context.Context
+	eventBus    *bus.EventBus
+	config      *config.Config
+	appstate    *core.AppState
+	chatService *chat.Service
+	cancel      context.CancelFunc
+	server      *http.Server
 }
 
 func NewApplication(cfg *config.Config) (*Application, error) {
@@ -32,8 +42,10 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	}
 	appStateObs.Start()
 
-	_, _, err = uiapi.StartAPIServer(ctx, cfg.API.ListenAddr, appState, eventbus)
-	eventbus.Publish(core.ApiStartedEvent{})
+	chatHandler := chat.NewProtocolHandler(appState)
+
+	_, server, err := uiapi.StartAPIServer(ctx, cfg.API.ListenAddr, appState, eventbus, chatHandler)
+	eventbus.PublishAsync(events.ApiStartedEvent{})
 
 	if err != nil {
 		cancel()
@@ -41,10 +53,13 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	}
 
 	app := &Application{
-		ctx:      ctx,
-		config:   cfg,
-		appstate: appState,
-		eventBus: eventbus,
+		ctx:         ctx,
+		config:      cfg,
+		appstate:    appState,
+		eventBus:    eventbus,
+		chatService: chatHandler,
+		cancel:      cancel,
+		server:      server,
 	}
 
 	return app, nil
@@ -69,18 +84,66 @@ func (app *Application) Start() error {
 	}
 
 	nodeManager := peer.NewNodeManager(app.ctx, app.appstate, &app.config.P2P)
-	err = nodeManager.Initialize()
-
+	host, err := nodeManager.Initialize()
 	if err != nil {
 		return err
 	}
 
-	discoveryManager, err := discovery.NewDiscoveryManager(app.ctx, nodeManager.GetHost(), app.config, app.eventBus)
+	app.eventBus.PublishAsync(events.HostInitializedEvent{Host: host})
+	nodeManager.LogNodeDetails()
+
+	if err != nil {
+		return err
+	}
+	discoveryManager, err := discovery.NewDiscoveryManager(app.ctx, host, app.config, app.eventBus)
 	err = discoveryManager.Initialize()
+	app.eventBus.PublishAsync(events.SetupCompletedEvent{})
+
+	app.chatService.Register()
 
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (app *Application) WaitForShutdown() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		sig := <-c
+		log.Printf("\r- Received signal %s. Triggering shutdown...", sig)
+		app.cancel()
+	}()
+
+	/* Block until termination signal received */
+	<-app.ctx.Done()
+}
+
+func (app *Application) Stop() {
+	/* --- Graceful Shutdown Sequence --- */
+	log.Println("Shutting down daemon...")
+
+	/* Shutdown API server */
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+	log.Println("Shutting down API server...")
+	if err := app.server.Shutdown(shutdownCtx); err != nil {
+		log.Printf("API server shutdown error: %v", err)
+	} else {
+		log.Println("API server stopped.")
+	}
+
+	/* Shutdown node */
+	if app.appstate.Node != nil {
+		log.Println("Closing libp2p node...")
+		if err := (*app.appstate.Node).Close(); err != nil {
+			log.Printf("Error closing libp2p node: %v", err)
+		} else {
+			log.Println("Libp2p node closed.")
+		}
+	}
+
+	log.Println("Daemon shut down gracefully.")
 }

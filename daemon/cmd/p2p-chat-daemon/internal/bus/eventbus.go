@@ -1,7 +1,7 @@
 package bus
 
 import (
-	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
 	"reflect"
 	"sync"
 )
@@ -17,7 +17,7 @@ func NewEventBus() *EventBus {
 	}
 }
 
-func (eb *EventBus) Subscribe(ch chan interface{}, event core.Event) {
+func (eb *EventBus) Subscribe(ch chan interface{}, event events.Event) {
 	eventType := reflect.TypeOf(event).String()
 
 	eb.mu.Lock()
@@ -26,7 +26,7 @@ func (eb *EventBus) Subscribe(ch chan interface{}, event core.Event) {
 	eb.observers[eventType] = append(eb.observers[eventType], ch)
 }
 
-func (eb *EventBus) Publish(event core.Event) {
+func (eb *EventBus) PublishAsync(event events.Event) {
 	eb.mu.RLock()
 	defer eb.mu.RUnlock()
 

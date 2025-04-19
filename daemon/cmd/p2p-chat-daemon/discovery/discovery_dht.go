@@ -22,14 +22,14 @@ import (
 // DHTDiscovery manages advertising and finding peers using the Kademlia DHT.
 type DHTDiscovery struct {
 	ctx       context.Context
-	host      host.Host
+	host      *host.Host
 	dht       *dht.IpfsDHT
 	cfg       *config.P2PConfig
 	discovery *routing.RoutingDiscovery
 }
 
 // NewDHTDiscovery creates a new DHT discovery manager.
-func NewDHTDiscovery(ctx context.Context, cfg *config.P2PConfig, host host.Host) (*DHTDiscovery, error) {
+func NewDHTDiscovery(ctx context.Context, cfg *config.P2PConfig, host *host.Host) (*DHTDiscovery, error) {
 	if host == nil || cfg == nil {
 		log.Println("P2P DHT Discovery: ERROR - Cannot initialize with nil host, DHT, or config.")
 		return nil, fmt.Errorf("p2P DHT Discovery: ERROR - Cannot initialize with nil host, DHT, or config")
@@ -48,7 +48,7 @@ func NewDHTDiscovery(ctx context.Context, cfg *config.P2PConfig, host host.Host)
 		opts = append(opts, dht.ProtocolPrefix(protocol.ID(cfg.DHTProtocolID)))
 	}
 
-	kadDHT, err := dht.New(ctx, host, opts...)
+	kadDHT, err := dht.New(ctx, *host, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create DHT: %w", err)
 	}
@@ -89,7 +89,7 @@ func (d *DHTDiscovery) connectToBootstrapPeers() error {
 			defer cancel()
 
 			log.Printf("Connecting to bootstrap peer: %s", pi.ID)
-			if err := d.host.Connect(ctx, pi); err != nil {
+			if err := (*d.host).Connect(ctx, pi); err != nil {
 				log.Printf("Failed to connect to bootstrap peer %s: %v", pi.ID, err)
 				atomic.AddInt32(&failed, 1)
 			} else {
@@ -194,11 +194,11 @@ func (d *DHTDiscovery) findPeers(ctx context.Context) {
 			defer wg.Done()
 
 			// Skip self or peers with no addresses
-			if pi.ID == d.host.ID() || len(pi.Addrs) == 0 {
+			if pi.ID == (*d.host).ID() || len(pi.Addrs) == 0 {
 				return
 			}
 			// Skip already connected peers
-			if d.host.Network().Connectedness(pi.ID) == network.Connected {
+			if (*d.host).Network().Connectedness(pi.ID) == network.Connected {
 				return
 			}
 
@@ -211,7 +211,7 @@ func (d *DHTDiscovery) findPeers(ctx context.Context) {
 			defer connectCancel()
 
 			// log.Printf("P2P DHT Discovery: Attempting connection to discovered peer: %s", pi.ID.ShortString())
-			if err := d.host.Connect(connectCtx, pi); err == nil {
+			if err := (*d.host).Connect(connectCtx, pi); err == nil {
 				log.Printf("P2P DHT Discovery: Connected to discovered peer: %s", pi.ID.ShortString())
 				atomic.AddInt32(&connectedCount, 1)
 				// Optional: Protect connection? d.host.ConnManager().Protect(pi.ID, d.cfg.DiscoveryServiceID)

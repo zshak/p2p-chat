@@ -1,4 +1,3 @@
-// internal/core/state.go
 package core
 
 import (
@@ -51,12 +50,12 @@ func (s DaemonState) String() string {
 type AppState struct {
 	Mu           sync.Mutex
 	State        DaemonState
-	Node         host.Host    // Libp2p host, nil until initialized
-	Dht          *dht.IpfsDHT // DHT instance, nil until initialized
+	Node         *host.Host
+	Dht          *dht.IpfsDHT
 	KeyPath      string
-	PrivKey      crypto.PrivKey // private key.
-	LastError    error          // Store last significant error
-	KeyReadyChan chan struct{}  // Channel to signal key is ready
+	PrivKey      crypto.PrivKey
+	LastError    error
+	KeyReadyChan chan struct{}
 }
 
 // NewAppState creates and initializes a new AppState.

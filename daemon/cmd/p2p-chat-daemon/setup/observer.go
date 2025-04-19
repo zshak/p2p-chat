@@ -6,6 +6,7 @@ import (
 	"log"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
 )
 
 type Observer struct {
@@ -31,7 +32,8 @@ func NewObserver(appState *core.AppState, eventBus *bus.EventBus, keyReadyChan c
 
 func (ob *Observer) Start() {
 	log.Println("setup observer started")
-	ob.bus.Subscribe(ob.eventsChan, core.UserAuthenticatedEvent{})
+	ob.bus.Subscribe(ob.eventsChan, events.UserAuthenticatedEvent{})
+	ob.bus.Subscribe(ob.eventsChan, events.KeyGeneratedEvent{})
 
 	go ob.listen()
 }
@@ -52,7 +54,7 @@ func (ob *Observer) listen() {
 func (ob *Observer) handleEvent(event interface{}) {
 	switch event.(type) {
 
-	case core.UserAuthenticatedEvent:
+	case events.UserAuthenticatedEvent, events.KeyGeneratedEvent:
 		log.Printf("User Authenticated, Unlocking Startup")
 		select {
 		// close (idempotent)

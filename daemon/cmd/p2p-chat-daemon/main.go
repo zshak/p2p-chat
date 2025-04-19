@@ -4,8 +4,6 @@ import (
 	"log"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/config"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/setup"
-
-	golog "github.com/ipfs/go-log/v2"
 )
 
 func main() {
@@ -14,12 +12,11 @@ func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
 	log.Println("Process Starting...")
 
-	// Configure structured logging (optional but good)
-	//golog.SetAllLoggers(golog.LevelWarn)  // Sensible default
+	//golog.SetAllLoggers(golog.LevelWarn)
 
-	golog.SetLogLevel("autonat", "debug")
-	golog.SetLogLevel("autorelay", "debug")
-	// golog.SetLogLevel("dht", "warn") // Reduce DHT noise unless debugging
+	//golog.SetLogLevel("autonat", "debug")
+	//golog.SetLogLevel("autorelay", "debug")
+	// golog.SetLogLevel("dht", "warn")
 
 	// --- Load Configuration ---
 	cfg, err := config.Load()
@@ -34,20 +31,11 @@ func main() {
 		log.Fatalf("FATAL: Failed to initialize application: %v", err)
 	}
 
-	// --- Start Services (in background) ---
-	if err := app.Start(); err != nil {
-		log.Fatalf("FATAL: Failed to start application services: %v", err)
-	}
+	// --- Run Services ---
+	go app.Start()
 
 	// --- Wait for Shutdown ---
-	//app.WaitForShutdown() // Blocks until Ctrl+C or fatal internal error
+	app.WaitForShutdown()
 
-	// --- Stop Services ---
-	//log.Println("Process Stopping...")
-	//if err := app.Stop(); err != nil {
-	//	log.Printf("ERROR: Shutdown completed with error: %v", err)
-	//	os.Exit(1) // Indicate error on exit
-	//}
-
-	log.Println("Process Exited Gracefully.")
+	app.Stop()
 }

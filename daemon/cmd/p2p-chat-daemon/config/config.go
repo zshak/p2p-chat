@@ -46,13 +46,14 @@ type Config struct {
 
 // Load reads configuration from flags/env/files.
 func Load() (*Config, error) {
-	usePubBootstraps := flag.Bool("pub", true, "Use public bootstrap nodes instead of private ones.")
-	dhtProtoID := flag.String("dhtproto", "/p2p-chat-daemon/kad/1.0.0", "DHT Protocol ID (used only if -private=true).")
+	usePubBootstraps := flag.Bool("pub", false, "Use public bootstrap nodes instead of private ones.")
+	dhtProtoID := flag.String("dhtproto", "/p2p-chat-daemon/kad/1.0.0", "DHT Protocol ID (used only if private network).")
 	discoverySvcID := flag.String("discoverysvc", "p2p-chat-daemon", "Service name tag for DHT discovery.")
-	enableMDNS := flag.Bool("mdns", true, "Enable mDNS local discovery.")
+	enableMDNS := flag.Bool("mdns", false, "Enable mDNS local discovery.")
 	mdnsTag := flag.String("mdnstag", "p2p-chat-daemon.local", "Service tag for mDNS discovery.")
 	// Example: Add flag for API address if needed
 	apiListenAddr := flag.String("api", defaultAPIAddr, "Host and port for the API server (e.g., 127.0.0.1:0)")
+	keyFileName := flag.String("key", defaultKeyFileName, "Private key file name")
 
 	flag.Parse()
 
@@ -67,7 +68,7 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("could not create app data directory %s: %w", appDataDir, err)
 	}
 
-	keyPath := filepath.Join(appDataDir, defaultKeyFileName)
+	keyPath := filepath.Join(appDataDir, *keyFileName)
 
 	var bootstrapPeers []peer.AddrInfo
 	if *usePubBootstraps {

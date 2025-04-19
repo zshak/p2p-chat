@@ -40,19 +40,19 @@ func newDiscoveryNotifee(ctx context.Context, h host.Host) *discoveryNotifee {
 }
 
 // NewMDNSDiscovery creates a new mDNS discovery manager.
-func NewMDNSDiscovery(ctx context.Context, cfg *config.P2PConfig, host host.Host) *MDNSDiscovery {
+func NewMDNSDiscovery(ctx context.Context, cfg *config.P2PConfig, host *host.Host) *MDNSDiscovery {
 	if host == nil || cfg == nil {
 		return nil
 	}
 	return &MDNSDiscovery{
 		ctx:  ctx,
-		host: host,
+		host: *host,
 		cfg:  cfg,
 	}
 }
 
-// Start initializes and starts the mDNS service.
-func (m *MDNSDiscovery) Start() error {
+// Run initializes and starts the mDNS service.
+func (m *MDNSDiscovery) Run() error {
 	if !m.cfg.EnableMDNS {
 		log.Println("P2P mDNS Discovery: Skipping setup as it's disabled in config.")
 		return nil

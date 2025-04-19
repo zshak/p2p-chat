@@ -6,13 +6,13 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/config"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
-	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
 )
 
 // Manager handles all peer discovery mechanisms
 type Manager struct {
 	ctx           context.Context
-	node          host.Host
+	node          *host.Host
 	cfg           *config.Config
 	dhtDiscovery  *DHTDiscovery
 	mdnsDiscovery *MDNSDiscovery
@@ -20,7 +20,7 @@ type Manager struct {
 }
 
 // NewDiscoveryManager creates a new discovery manager*
-func NewDiscoveryManager(ctx context.Context, node host.Host, cfg *config.Config, bus *bus.EventBus) (*Manager, error) {
+func NewDiscoveryManager(ctx context.Context, node *host.Host, cfg *config.Config, bus *bus.EventBus) (*Manager, error) {
 	dhtDisc, err := NewDHTDiscovery(ctx, &cfg.P2P, node)
 
 	if err != nil {
@@ -42,10 +42,10 @@ func NewDiscoveryManager(ctx context.Context, node host.Host, cfg *config.Config
 // Initialize sets up DHT-based discovery
 func (dm *Manager) Initialize() error {
 	dm.dhtDiscovery.connectToBootstrapPeers()
-	dm.eventBus.Publish(core.DhtCreatedEvent{Dht: dm.dhtDiscovery.dht})
+	dm.eventBus.PublishAsync(events.DhtCreatedEvent{Dht: dm.dhtDiscovery.dht})
 
-	dm.dhtDiscovery.Run()
+	go dm.mdnsDiscovery.Run()
+	go dm.dhtDiscovery.Run()
 
-	dm.mdnsDiscovery.Start()
 	return nil
 }
