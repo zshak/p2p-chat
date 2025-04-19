@@ -9,7 +9,7 @@ import (
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
 )
 
-type Observer struct {
+type Consumer struct {
 	appState     *core.AppState
 	bus          *bus.EventBus
 	ctx          context.Context
@@ -17,11 +17,11 @@ type Observer struct {
 	keyReadyChan chan struct{}
 }
 
-func NewObserver(appState *core.AppState, eventBus *bus.EventBus, keyReadyChan chan struct{}, ctx context.Context) (*Observer, error) {
+func NewConsumer(appState *core.AppState, eventBus *bus.EventBus, keyReadyChan chan struct{}, ctx context.Context) (*Consumer, error) {
 	if appState == nil {
 		return nil, errors.New("appState is nil")
 	}
-	return &Observer{
+	return &Consumer{
 		appState:     appState,
 		bus:          eventBus,
 		keyReadyChan: keyReadyChan,
@@ -30,39 +30,39 @@ func NewObserver(appState *core.AppState, eventBus *bus.EventBus, keyReadyChan c
 	}, nil
 }
 
-func (ob *Observer) Start() {
+func (c *Consumer) Start() {
 	log.Println("setup observer started")
-	ob.bus.Subscribe(ob.eventsChan, events.UserAuthenticatedEvent{})
-	ob.bus.Subscribe(ob.eventsChan, events.KeyGeneratedEvent{})
+	c.bus.Subscribe(c.eventsChan, events.UserAuthenticatedEvent{})
+	c.bus.Subscribe(c.eventsChan, events.KeyGeneratedEvent{})
 
-	go ob.listen()
+	go c.listen()
 }
 
-func (ob *Observer) listen() {
+func (c *Consumer) listen() {
 	for {
 		select {
-		case <-ob.ctx.Done():
+		case <-c.ctx.Done():
 			log.Println("app state observer job stopped")
 			return
 
-		case event := <-ob.eventsChan:
-			ob.handleEvent(event)
+		case event := <-c.eventsChan:
+			c.handleEvent(event)
 		}
 	}
 }
 
-func (ob *Observer) handleEvent(event interface{}) {
+func (c *Consumer) handleEvent(event interface{}) {
 	switch event.(type) {
 
 	case events.UserAuthenticatedEvent, events.KeyGeneratedEvent:
 		log.Printf("User Authenticated, Unlocking Startup")
 		select {
 		// close (idempotent)
-		case <-ob.keyReadyChan:
+		case <-c.keyReadyChan:
 			// channel closed
 		default:
 			// else close
-			close(ob.keyReadyChan)
+			close(c.keyReadyChan)
 		}
 		return
 	}

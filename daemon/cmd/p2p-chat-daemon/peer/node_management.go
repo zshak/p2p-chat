@@ -102,20 +102,16 @@ func (nm *NodeManager) createPeerSourceFunc() func(context.Context, int) <-chan 
 			defer close(peerChan)
 
 			// Get DHT instance from app state
-			log.Printf("1")
 			nm.appState.Mu.Lock()
-			log.Printf("2")
 			dhtInstance := nm.appState.Dht
 			nodeInstance := *nm.appState.Node
 			nm.appState.Mu.Unlock()
-			log.Printf("2")
 
 			// Check if DHT is available
 			if dhtInstance == nil || nodeInstance == nil {
 				log.Println("AutoRelay PeerSource: DHT or node instance not yet available.")
 				return
 			}
-			log.Printf("3")
 
 			found := int32(0)
 			// get fresh addresses
