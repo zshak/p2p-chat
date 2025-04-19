@@ -65,10 +65,6 @@ func main() {
 		libp2p.Identity(privKey),
 		libp2p.Security(libp2ptls.ID, libp2ptls.New),
 		libp2p.Security(noise.ID, noise.New),
-		libp2p.EnableRelay(),
-		libp2p.EnableRelayService(),
-		libp2p.ForceReachabilityPublic(),
-		libp2p.EnableNATService(),
 	)
 	if err != nil {
 		log.Fatalf("Failed to create libp2p host: %v", err)

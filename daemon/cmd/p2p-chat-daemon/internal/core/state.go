@@ -1,3 +1,4 @@
+// internal/core/state.go
 package core
 
 import (
@@ -11,8 +12,6 @@ import (
 
 // DaemonState represents the possible operational states of the daemon.
 type DaemonState int
-
-const ChatProtocolID = "/p2p-chat-daemon/chat/1.0.0"
 
 const (
 	StateInitializing DaemonState = iota
@@ -50,12 +49,12 @@ func (s DaemonState) String() string {
 type AppState struct {
 	Mu           sync.Mutex
 	State        DaemonState
-	Node         *host.Host
-	Dht          *dht.IpfsDHT
+	Node         host.Host    // Libp2p host, nil until initialized
+	Dht          *dht.IpfsDHT // DHT instance, nil until initialized
 	KeyPath      string
-	PrivKey      crypto.PrivKey
-	LastError    error
-	KeyReadyChan chan struct{}
+	PrivKey      crypto.PrivKey // private key.
+	LastError    error          // Store last significant error
+	KeyReadyChan chan struct{}  // Channel to signal key is ready
 }
 
 // NewAppState creates and initializes a new AppState.
