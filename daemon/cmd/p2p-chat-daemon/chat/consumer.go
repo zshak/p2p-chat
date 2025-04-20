@@ -30,6 +30,7 @@ func NewConsumer(appState *core.AppState, eventBus *bus.EventBus, repo storage.M
 func (c *Consumer) Start() {
 	log.Println("chat consumer started")
 	c.bus.Subscribe(c.eventsChan, events.MessageSentEvent{})
+	c.bus.Subscribe(c.eventsChan, events.MessageReceivedEvent{})
 
 	go c.listen()
 }
@@ -54,10 +55,23 @@ func (c *Consumer) handleEvent(event interface{}) {
 		log.Println("received message sent event")
 		c.handleMessageSent(event.Message)
 		return
+
+	case events.MessageReceivedEvent:
+		log.Println("received message received event")
+		c.handleMessageReceived(event.Message)
+		return
 	}
 }
 
 func (c *Consumer) handleMessageSent(message types.ChatMessage) {
+	c.SaveMessage(message)
+}
+
+func (c *Consumer) handleMessageReceived(message types.ChatMessage) {
+	c.SaveMessage(message)
+}
+
+func (c *Consumer) SaveMessage(message types.ChatMessage) {
 	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second) // Short timeout for DB operation
 	defer cancel()
 
@@ -67,5 +81,4 @@ func (c *Consumer) handleMessageSent(message types.ChatMessage) {
 	} else {
 		log.Printf("Chat Consumer: Successfully stored sent message with DB ID %d to %s", id, message.RecipientPeerId)
 	}
-
 }

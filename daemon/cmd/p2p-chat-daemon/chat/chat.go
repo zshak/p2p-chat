@@ -69,7 +69,15 @@ func (s *Service) handleChatStream(stream network.Stream) {
 	// Log the received message (replace with actual message handling later)
 	log.Printf("Chat: Received message from %s: <<< %s >>>", peerID.ShortString(), message)
 
-	// For this simple test, we can just close the stream after reading.
+	messageEvent := types.ChatMessage{
+		RecipientPeerId: (*s.appState.Node).ID().String(),
+		SenderPeerID:    peerID.String(),
+		Content:         message,
+		SendTime:        time.Now(),
+		IsOutgoing:      false,
+	}
+	s.bus.PublishAsync(events.MessageReceivedEvent{Message: messageEvent})
+
 	// Alternatively, the sender could close it.
 	stream.Close()
 }
@@ -157,12 +165,6 @@ func (s *Service) SendMessage(targetPeerId string, message string) error {
 	if err != nil {
 		stream.Reset()
 		return fmt.Errorf("failed to flush stream writer: %w", err)
-	}
-
-	if err != nil {
-		log.Printf("Chat API: Failed to write message to %s: %v", targetPID.ShortString(), err)
-		stream.Reset()
-		return errors.New(fmt.Sprintf("Failed to send message: %v", err))
 	}
 
 	messageEvent := types.ChatMessage{
