@@ -41,3 +41,7 @@ type SetupCompletedEvent struct{}
 type MessageSentEvent struct {
 	Message types.ChatMessage
 }
+
+type MessageReceivedEvent struct {
+	Message types.ChatMessage
+}
