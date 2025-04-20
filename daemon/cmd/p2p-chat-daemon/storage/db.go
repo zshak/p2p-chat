@@ -5,8 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/config"
 	"sync"
 	"time"
 
@@ -25,16 +24,12 @@ type DB struct {
 }
 
 // NewDB initializes the database connection and ensures schema exists.
-func NewDB(dataDir string) (*DB, error) {
-	if dataDir == "" {
+func NewDB(config *config.Config) (*DB, error) {
+	if config.P2P.DbPath == "" {
 		return nil, errors.New("database data directory cannot be empty")
 	}
 
-	if err := os.MkdirAll(dataDir, 0700); err != nil {
-		return nil, fmt.Errorf("failed to ensure data directory %s exists: %w", dataDir, err)
-	}
-
-	dbPath := filepath.Join(dataDir, "chat.db")
+	dbPath := config.P2P.DbPath
 	log.Printf("Storage: Initializing database at %s", dbPath)
 
 	// The DSN for sqlite is just the file path.
