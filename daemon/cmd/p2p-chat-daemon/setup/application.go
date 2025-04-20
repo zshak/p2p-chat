@@ -45,7 +45,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	}
 	appStateObs.Start()
 
-	db, err := storage.NewDB(cfg.AppDataPath)
+	db, err := storage.NewDB(cfg)
 	if err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to initialize database: %w", err)

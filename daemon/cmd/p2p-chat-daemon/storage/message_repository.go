@@ -42,8 +42,8 @@ func (r *sqliteMessageRepository) Store(ctx context.Context, msg types.ChatMessa
 		VALUES (?, ?, ?, ?, ?);
 `
 	res, err := tx.ExecContext(ctx, msgSQL,
-		msg.RecipientPeerId,
 		msg.SenderPeerID,
+		msg.RecipientPeerId,
 		msg.SendTime,
 		msg.Content,
 		msg.IsOutgoing,

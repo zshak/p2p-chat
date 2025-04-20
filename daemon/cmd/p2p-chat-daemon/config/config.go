@@ -27,6 +27,7 @@ type P2PConfig struct {
 	BootstrapPeers      []peer.AddrInfo
 	UsePublicBootstraps bool
 	PrivateKeyPath      string
+	DbPath              string
 	DHTProtocolID       string // Only used if not using public bootstrap nodes
 	DiscoveryServiceID  string
 	EnableMDNS          bool
@@ -55,6 +56,7 @@ func Load() (*Config, error) {
 	// Example: Add flag for API address if needed
 	apiListenAddr := flag.String("api", defaultAPIAddr, "Host and port for the API server (e.g., 127.0.0.1:0)")
 	keyFileName := flag.String("key", defaultKeyFileName, "Private key file name")
+	dbFileName := flag.String("db", "chat.db", "Database file name")
 
 	flag.Parse()
 
@@ -70,6 +72,7 @@ func Load() (*Config, error) {
 	}
 
 	keyPath := filepath.Join(appDataDir, *keyFileName)
+	dbPath := filepath.Join(appDataDir, *dbFileName)
 
 	var bootstrapPeers []peer.AddrInfo
 	if *usePubBootstraps {
@@ -95,6 +98,7 @@ func Load() (*Config, error) {
 			BootstrapPeers:      bootstrapPeers,
 			UsePublicBootstraps: *usePubBootstraps,
 			PrivateKeyPath:      keyPath,
+			DbPath:              dbPath,
 			DHTProtocolID:       *dhtProtoID,
 			DiscoveryServiceID:  *discoverySvcID,
 			EnableMDNS:          *enableMDNS,
