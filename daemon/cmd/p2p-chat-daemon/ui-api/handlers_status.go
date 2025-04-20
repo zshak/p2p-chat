@@ -7,7 +7,7 @@ import (
 )
 
 // handleStatus is the method implementing the /status endpoint logic.
-func (h *apiHandler) handleStatus(w http.ResponseWriter, r *http.Request) {
+func (h *ApiHandler) handleStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return

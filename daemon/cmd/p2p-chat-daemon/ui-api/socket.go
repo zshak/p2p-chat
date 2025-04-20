@@ -28,7 +28,7 @@ var upgrader = websocket.Upgrader{
 }
 
 // handleWebSocket is the HTTP handler that upgrades connections to socket
-func (h *apiHandler) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+func (h *ApiHandler) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	log.Println("API WS Handler: Received HTTP request for upgrade...")
 
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -37,12 +37,14 @@ func (h *apiHandler) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.wsMu.Lock()
 	if h.wsConn != nil {
 		h.wsConn.Close()
 		h.wsConn = conn
 	} else {
 		h.wsConn = conn
 	}
+	h.wsMu.Unlock()
 
 	remoteAddr := conn.RemoteAddr()
 	log.Printf("API WS Handler: Connection established from %s", remoteAddr)
@@ -58,7 +60,7 @@ func (h *apiHandler) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 // readLoop handles reading messages from a single WebSocket connection
-func (h *apiHandler) readLoop(conn *websocket.Conn) {
+func (h *ApiHandler) readLoop(conn *websocket.Conn) {
 	remoteAddr := conn.RemoteAddr()
 	defer log.Printf("API WS ReadLoop: Exiting for %s", remoteAddr)
 
@@ -82,5 +84,21 @@ func (h *apiHandler) readLoop(conn *websocket.Conn) {
 		}
 
 		h.chatService.SendMessage(msg.TargetPeerID, msg.Message)
+	}
+}
+
+func (h *ApiHandler) send(msg string) {
+	log.Printf("API WS Send: Sending message 1: %s", msg)
+	h.wsMu.Lock()
+	defer h.wsMu.Unlock()
+	log.Printf("API WS Send: Sending message 2: %s", msg)
+
+	bytes := []byte(msg)
+	err := h.wsConn.WriteMessage(websocket.TextMessage, bytes)
+
+	log.Printf("API WS Send: Sending message 3: %s", msg)
+
+	if err != nil {
+		log.Printf("API WS Send: Failed to send message: %v", err)
 	}
 }

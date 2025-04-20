@@ -60,8 +60,11 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 
 	chatHandler := chat.NewProtocolHandler(appState, eventbus)
 
-	_, server, err := uiapi.StartAPIServer(ctx, cfg.API.ListenAddr, appState, eventbus, chatHandler)
+	_, server, handler, err := uiapi.StartAPIServer(ctx, cfg.API.ListenAddr, appState, eventbus, chatHandler)
 	eventbus.PublishAsync(events.ApiStartedEvent{})
+
+	apiConsumer := uiapi.NewConsumer(eventbus, handler, ctx)
+	apiConsumer.Start()
 
 	if err != nil {
 		cancel()

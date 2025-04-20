@@ -5,7 +5,7 @@ import (
 )
 
 // setupRoutes configures the routes for the API server.
-func setupRoutes(mux *http.ServeMux, handler *apiHandler) {
+func setupRoutes(mux *http.ServeMux, handler *ApiHandler) {
 	// Status endpoint
 	mux.HandleFunc("/status", handler.handleStatus)
 

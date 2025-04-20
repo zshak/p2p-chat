@@ -12,7 +12,7 @@ import (
 )
 
 // handleCreateKey handles the POST /setup/create-key endpoint.
-func (h *apiHandler) handleCreateKey(w http.ResponseWriter, r *http.Request) {
+func (h *ApiHandler) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -54,7 +54,7 @@ func (h *apiHandler) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleUnlockKey handles the POST /setup/unlock-key endpoint.
-func (h *apiHandler) handleUnlockKey(w http.ResponseWriter, r *http.Request) {
+func (h *ApiHandler) handleUnlockKey(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return

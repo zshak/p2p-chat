@@ -7,7 +7,7 @@ import (
 )
 
 // handleSendMessage handles POST requests to /chat/send
-func (h *apiHandler) handleSendMessage(w http.ResponseWriter, r *http.Request) {
+func (h *ApiHandler) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
