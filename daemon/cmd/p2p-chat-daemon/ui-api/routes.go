@@ -15,4 +15,5 @@ func setupRoutes(mux *http.ServeMux, handler *apiHandler) {
 
 	mux.HandleFunc("/chat/send", handler.handleSendMessage)
 
+	mux.HandleFunc("/ws", handler.handleWebSocket)
 }

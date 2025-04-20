@@ -66,7 +66,6 @@ func (s *Service) handleChatStream(stream network.Stream) {
 	// Trim trailing newline
 	message = strings.TrimSpace(message)
 
-	// Log the received message (replace with actual message handling later)
 	log.Printf("Chat: Received message from %s: <<< %s >>>", peerID.ShortString(), message)
 
 	messageEvent := types.ChatMessage{
@@ -84,7 +83,6 @@ func (s *Service) handleChatStream(stream network.Stream) {
 
 // SendMessage sends a chat message to a peer
 func (s *Service) SendMessage(targetPeerId string, message string) error {
-	// Parse PeerID
 	targetPID, err := peer.Decode(targetPeerId)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Invalid target PeerID format: %v", err))
@@ -94,7 +92,6 @@ func (s *Service) SendMessage(targetPeerId string, message string) error {
 		return errors.New(fmt.Sprintf(fmt.Sprintf("Node is not ready (state: %s)", s.appState.State)))
 	}
 
-	// Don't send to self
 	if targetPID == (*s.appState.Node).ID() {
 		return errors.New(fmt.Sprintf("Cannot send chat message to self"))
 	}
@@ -105,8 +102,6 @@ func (s *Service) SendMessage(targetPeerId string, message string) error {
 	if connectedness != network.Connected {
 		log.Printf("Chat API: Not connected to %s (State: %s). Attempting connection...", targetPID.ShortString(), connectedness)
 
-		// Need AddrInfo to connect. Get latest from Peerstore.
-		// Discovery should be populating this periodically.
 		addrInfo := (*s.appState.Node).Peerstore().PeerInfo(targetPID)
 		if len(addrInfo.Addrs) == 0 {
 			log.Printf("Chat API: No addresses found in Peerstore for %s. Cannot connect.", targetPID.ShortString())
@@ -114,24 +109,21 @@ func (s *Service) SendMessage(targetPeerId string, message string) error {
 		}
 
 		// Use a separate context and timeout for the connection attempt
-		connectCtx, connectCancel := context.WithTimeout(context.Background(), 60*time.Second) // Longer timeout for connect
+		connectCtx, connectCancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer connectCancel()
 
-		err = (*s.appState.Node).Connect(connectCtx, addrInfo) // Use the AddrInfo from Peerstore
+		err = (*s.appState.Node).Connect(connectCtx, addrInfo)
 		if err != nil {
 			log.Printf("Chat API: Failed to connect to %s: %v", targetPID.ShortString(), err)
 			return errors.New(fmt.Sprintf("Failed to establish connection with peer %s: %v", targetPID.ShortString(), err))
 		}
 		log.Printf("Chat API: Successfully connected to %s.", targetPID.ShortString())
-		// Now we expect connectedness == network.Connected
 	} else {
 		log.Printf("Chat API: Already connected to %s.", targetPID.ShortString())
 	}
 
-	// --- Open Stream to Peer ---
 	log.Printf("Chat API: Attempting to open stream to %s for protocol %s", targetPID.ShortString(), core.ChatProtocolID)
 
-	// Use a timeout for stream opening
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	ctx = network.WithAllowLimitedConn(ctx, "mito")
 	defer cancel()
