@@ -3,10 +3,12 @@ package chat
 import (
 	"bufio"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"io"
 	"log"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/core/types"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
@@ -41,16 +43,25 @@ func (s *Service) handleChatStream(stream network.Stream) {
 	peerID := stream.Conn().RemotePeer()
 	log.Printf("Chat: Received new stream from %s", peerID.ShortString())
 
-	// Use a buffered reader for efficiency
 	reader := bufio.NewReader(stream)
 
-	// Read the message (assuming one message per stream, ending with newline for this simple example)
-	message, err := reader.ReadString('\n')
+	var messageLen uint32
+	err := binary.Read(reader, binary.BigEndian, &messageLen)
 	if err != nil {
-		log.Printf("Chat: Error reading from stream from %s: %v", peerID.ShortString(), err)
-		stream.Reset() // Abruptly close the stream on error
+		log.Printf("Chat Handler: Error reading length prefix from %s: %v", peerID.ShortString(), err)
+		stream.Reset()
 		return
 	}
+
+	messageBytes := make([]byte, messageLen)
+	_, err = io.ReadFull(reader, messageBytes)
+	if err != nil {
+		log.Printf("Chat Handler: Error reading message content (expected %d bytes) from %s: %v", messageLen, peerID.ShortString(), err)
+		stream.Reset()
+		return
+	}
+
+	message := string(messageBytes)
 
 	// Trim trailing newline
 	message = strings.TrimSpace(message)
@@ -125,10 +136,27 @@ func (s *Service) SendMessage(targetPeerId string, message string) error {
 	log.Printf("Chat API: Stream opened successfully to %s", targetPID.ShortString())
 
 	// --- Send Message ---
+	messageBytes := []byte(message)
+	messageLen := uint32(len(messageBytes))
+
 	writer := bufio.NewWriter(stream)
-	_, err = writer.WriteString(message + "\n") // Add newline delimiter
-	if err == nil {
-		err = writer.Flush() // Ensure data is sent
+
+	err = binary.Write(writer, binary.BigEndian, messageLen)
+	if err != nil {
+		stream.Reset()
+		return fmt.Errorf("failed to write message length prefix: %w", err)
+	}
+
+	_, err = writer.Write(messageBytes)
+	if err != nil {
+		stream.Reset()
+		return fmt.Errorf("failed to write message content: %w", err)
+	}
+
+	err = writer.Flush()
+	if err != nil {
+		stream.Reset()
+		return fmt.Errorf("failed to flush stream writer: %w", err)
 	}
 
 	if err != nil {
