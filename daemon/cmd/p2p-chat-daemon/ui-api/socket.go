@@ -94,11 +94,18 @@ func (h *ApiHandler) send(msg string) {
 	log.Printf("API WS Send: Sending message 2: %s", msg)
 
 	bytes := []byte(msg)
-	err := h.wsConn.WriteMessage(websocket.TextMessage, bytes)
 
-	log.Printf("API WS Send: Sending message 3: %s", msg)
+	if h.wsConn == nil {
+		log.Printf("API WS Send: No connection to send message")
+		return
+	}
+
+	err := h.wsConn.WriteMessage(websocket.TextMessage, bytes)
 
 	if err != nil {
 		log.Printf("API WS Send: Failed to send message: %v", err)
+		return
 	}
+
+	log.Printf("API WS Send: Sending message 3: %s", msg)
 }
