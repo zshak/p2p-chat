@@ -1,4 +1,4 @@
-package ui_api
+package api
 
 // Contains API request/response struct definitions
 
@@ -19,4 +19,9 @@ type SetupRequest struct {
 type ChatMessageRequest struct {
 	TargetPeerID string `json:"target_peer_id"`
 	Message      string `json:"message"`
+}
+
+// FriendRequest defines the structure for sending a friend request via the API.
+type FriendRequest struct {
+	ReceiverPeerId string `json:"receiver_peer_id"`
 }

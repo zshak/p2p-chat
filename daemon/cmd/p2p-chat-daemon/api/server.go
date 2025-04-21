@@ -1,4 +1,4 @@
-package ui_api
+package api
 
 import (
 	"context"
@@ -10,16 +10,24 @@ import (
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/chat"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/profile"
 )
 
 // StartAPIServer initializes and starts the HTTP API server.
-func StartAPIServer(ctx context.Context, addr string, appState *core.AppState, bus *bus.EventBus, chatService *chat.Service) (net.Listener, *http.Server, *ApiHandler, error) {
+func StartAPIServer(
+	ctx context.Context,
+	addr string,
+	appState *core.AppState,
+	bus *bus.EventBus,
+	chatService *chat.Service,
+	profileService *profile.Service,
+) (net.Listener, *http.Server, *ApiHandler, error) {
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to listen on %s: %w", addr, err)
 	}
 
-	handler := newAPIHandler(appState, bus, chatService)
+	handler := newAPIHandler(appState, bus, chatService, profileService)
 
 	mux := http.NewServeMux()
 

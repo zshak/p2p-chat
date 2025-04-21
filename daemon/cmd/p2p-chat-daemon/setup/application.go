@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	uiapi "p2p-chat-daemon/cmd/p2p-chat-daemon/api"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/appstate"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/chat"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/config"
@@ -15,21 +16,23 @@ import (
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/peer"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/profile"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/storage"
-	uiapi "p2p-chat-daemon/cmd/p2p-chat-daemon/ui-api"
 	"syscall"
 	"time"
 )
 
 type Application struct {
-	ctx         context.Context
-	eventBus    *bus.EventBus
-	config      *config.Config
-	appstate    *core.AppState
-	chatService *chat.Service
-	cancel      context.CancelFunc
-	server      *http.Server
-	messageRepo storage.MessageRepository
+	ctx              context.Context
+	eventBus         *bus.EventBus
+	config           *config.Config
+	appstate         *core.AppState
+	chatService      *chat.Service
+	profileService   *profile.Service
+	cancel           context.CancelFunc
+	server           *http.Server
+	messageRepo      storage.MessageRepository
+	relationshipRepo storage.RelationshipRepository
 }
 
 func NewApplication(cfg *config.Config) (*Application, error) {
@@ -58,9 +61,17 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		return nil, fmt.Errorf("failed to create message repository: %w", err)
 	}
 
-	chatHandler := chat.NewProtocolHandler(appState, eventbus)
+	relationshipRepo, err := storage.NewSQLiteRelationshipRepository(db)
+	if err != nil {
+		db.Close()
+		cancel()
+		return nil, fmt.Errorf("failed to create message repository: %w", err)
+	}
 
-	_, server, handler, err := uiapi.StartAPIServer(ctx, cfg.API.ListenAddr, appState, eventbus, chatHandler)
+	chatHandler := chat.NewProtocolHandler(appState, eventbus)
+	profileHandle := profile.NewProtocolHandler(appState, eventbus)
+
+	_, server, handler, err := uiapi.StartAPIServer(ctx, cfg.API.ListenAddr, appState, eventbus, chatHandler, profileHandle)
 	eventbus.PublishAsync(events.ApiStartedEvent{})
 
 	apiConsumer := uiapi.NewConsumer(eventbus, handler, ctx)
@@ -72,14 +83,16 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	}
 
 	app := &Application{
-		ctx:         ctx,
-		config:      cfg,
-		appstate:    appState,
-		eventBus:    eventbus,
-		chatService: chatHandler,
-		cancel:      cancel,
-		server:      server,
-		messageRepo: msgRepo,
+		ctx:              ctx,
+		config:           cfg,
+		appstate:         appState,
+		eventBus:         eventbus,
+		chatService:      chatHandler,
+		profileService:   profileHandle,
+		cancel:           cancel,
+		server:           server,
+		messageRepo:      msgRepo,
+		relationshipRepo: relationshipRepo,
 	}
 
 	return app, nil
@@ -125,8 +138,16 @@ func (app *Application) Start() error {
 		return err
 	}
 
-	go chatCons.Start()
+	profileCons, err := profile.NewConsumer(app.appstate, app.eventBus, app.relationshipRepo, app.ctx)
+	if err != nil {
+		log.Println("Failed to create chat consumer")
+		return err
+	}
+
 	go app.chatService.Register()
+	go app.profileService.Register()
+	go chatCons.Start()
+	go profileCons.Start()
 
 	return nil
 }

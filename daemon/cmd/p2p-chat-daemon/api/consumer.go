@@ -1,4 +1,4 @@
-package ui_api
+package api
 
 import (
 	"context"

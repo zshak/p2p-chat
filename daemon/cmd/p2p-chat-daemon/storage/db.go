@@ -85,7 +85,15 @@ func (db *DB) ensureCreation() error {
 			is_outgoing BOOLEAN NOT NULL
 		);
 
+		CREATE TABLE IF NOT EXISTS relationships (
+			 peer_id TEXT PRIMARY KEY NOT NULL,
+			 status TEXT NOT NULL DEFAULT 'None',
+			 requested_at TEXT DEFAULT NULL,
+			 approved_at TEXT DEFAULT NULL
+		);
+
 		CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages (recipient_peer_id);
+		CREATE INDEX IF NOT EXISTS idx_relationships_peer_id ON relationships (peer_id);
 	`
 
 	log.Println("Storage: Applying database schema...")

@@ -12,7 +12,10 @@ import (
 // DaemonState represents the possible operational states of the daemon.
 type DaemonState int
 
-const ChatProtocolID = "/p2p-chat-daemon/chat/1.0.0"
+const (
+	ChatProtocolID          = "/p2p-chat-daemon/chat/1.0.0"
+	FriendRequestProtocolID = "/p2p-chat-daemon/friend-request/1.0.0"
+)
 
 const (
 	StateInitializing DaemonState = iota

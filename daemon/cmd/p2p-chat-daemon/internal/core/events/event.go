@@ -50,3 +50,7 @@ type MessageSentEvent struct {
 type MessageReceivedEvent struct {
 	Message types.ChatMessage
 }
+
+type FriendRequestReceived struct {
+	FriendRequest types.FriendRequestData
+}

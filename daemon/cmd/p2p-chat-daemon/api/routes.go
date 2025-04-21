@@ -1,4 +1,4 @@
-package ui_api
+package api
 
 import (
 	"net/http"
@@ -6,14 +6,13 @@ import (
 
 // setupRoutes configures the routes for the API server.
 func setupRoutes(mux *http.ServeMux, handler *ApiHandler) {
-	// Status endpoint
 	mux.HandleFunc("/status", handler.handleStatus)
 
-	// Setup endpoints
 	mux.HandleFunc("/setup/create-key", handler.handleCreateKey)
 	mux.HandleFunc("/setup/unlock-key", handler.handleUnlockKey)
 
 	mux.HandleFunc("/chat/send", handler.handleSendMessage)
+	mux.HandleFunc("/profile/friend", handler.handleFriendRequest)
 
 	mux.HandleFunc("/ws", handler.handleWebSocket)
 }

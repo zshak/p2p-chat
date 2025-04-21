@@ -137,6 +137,7 @@ func (c *Consumer) handleDhtCreatedEvent(dht *dht.IpfsDHT) {
 }
 
 func (c *Consumer) handleHostInitializedEvent(host *host.Host) {
+	log.Println("Host set in application state")
 	c.appState.Mu.Lock()
 	c.appState.Node = host
 	c.appState.Mu.Unlock()
