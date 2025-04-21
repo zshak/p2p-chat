@@ -6,6 +6,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/core/types"
+	"time"
 )
 
 type Event interface{}
@@ -53,4 +54,9 @@ type MessageReceivedEvent struct {
 
 type FriendRequestReceived struct {
 	FriendRequest types.FriendRequestData
+}
+
+type FriendRequestSentEvent struct {
+	ReceiverPeerId string
+	Timestamp      time.Time
 }

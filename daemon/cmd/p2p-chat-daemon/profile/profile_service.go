@@ -174,6 +174,7 @@ func (s *Service) SendFriendRequest(receiverPeerId string) error {
 		return fmt.Errorf("failed to send/close friend request: %w", err)
 	}
 
+	s.bus.PublishAsync(events.FriendRequestSentEvent{ReceiverPeerId: receiverPeerId, Timestamp: time.Now()})
 	log.Printf("Friend request sent successfully to %s", receiverPeerId)
 	return nil
 }

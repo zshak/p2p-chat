@@ -32,6 +32,7 @@ func NewConsumer(appState *core.AppState, eventBus *bus.EventBus, repo storage.R
 func (c *Consumer) Start() {
 	log.Println("chat consumer started")
 	c.bus.Subscribe(c.eventsChan, events.FriendRequestReceived{})
+	c.bus.Subscribe(c.eventsChan, events.FriendRequestSentEvent{})
 
 	go c.listen()
 }
@@ -53,8 +54,13 @@ func (c *Consumer) handleEvent(event interface{}) {
 	switch event := event.(type) {
 
 	case events.FriendRequestReceived:
-		log.Println("received message sent event")
+		log.Println("received friend request received event")
 		c.handleFriendRequestReceived(event.FriendRequest)
+		return
+
+	case events.FriendRequestSentEvent:
+		log.Println("received friend request sent event")
+		c.handleFriendRequestSent(event)
 		return
 	}
 }
@@ -89,5 +95,38 @@ func (c *Consumer) handleFriendRequestReceived(request types.FriendRequestData) 
 		log.Printf("Profile Consumer: ERROR - Failed to store friend request of %s: %v", request.SenderPeerID, err)
 	} else {
 		log.Printf("Profile Consumer: Successfully stored friend request of %s", request.SenderPeerID)
+	}
+}
+
+func (c *Consumer) handleFriendRequestSent(event events.FriendRequestSentEvent) {
+	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second) // Short timeout for DB operation
+	defer cancel()
+
+	// Parse the timestamp (excluding the "m=+46.107792917" part)
+	layout := "2006-01-02 15:04:05.999999 -0700 MST"
+
+	// Remove the monotonic clock portion (m=+46.107792917)
+	cleanTimestamp := event.Timestamp.String()
+	if idx := strings.Index(event.Timestamp.String(), " m=+"); idx > 0 {
+		cleanTimestamp = event.Timestamp.String()[:idx]
+	}
+
+	t, err := time.Parse(layout, cleanTimestamp)
+	if err != nil {
+		fmt.Println("Error parsing timestamp:", err)
+		return
+	}
+
+	entity := types.FriendRelationship{
+		PeerID:      event.ReceiverPeerId,
+		Status:      types.FriendStatusPending,
+		RequestedAt: t,
+	}
+
+	err = c.relationshipRepo.Store(storeCtx, entity)
+	if err != nil {
+		log.Printf("Profile Consumer: ERROR - Failed to store friend request of %s: %v", event.ReceiverPeerId, err)
+	} else {
+		log.Printf("Profile Consumer: Successfully stored friend request of %s", event.ReceiverPeerId)
 	}
 }
