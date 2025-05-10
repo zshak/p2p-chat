@@ -68,8 +68,8 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		return nil, fmt.Errorf("failed to create message repository: %w", err)
 	}
 
-	chatHandler := chat.NewProtocolHandler(appState, eventbus)
 	profileHandle := profile.NewProtocolHandler(appState, eventbus, ctx, relationshipRepo)
+	chatHandler := chat.NewProtocolHandler(appState, eventbus, profileHandle)
 
 	_, server, handler, err := uiapi.StartAPIServer(ctx, cfg.API.ListenAddr, appState, eventbus, chatHandler, profileHandle)
 	eventbus.PublishAsync(events.ApiStartedEvent{})

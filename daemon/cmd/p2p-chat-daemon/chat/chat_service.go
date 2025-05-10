@@ -14,21 +14,28 @@ import (
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/profile"
 	"strings"
 	"time"
 )
 
 // Service manages the chat protocol
 type Service struct {
-	appState *core.AppState
-	bus      *bus.EventBus
+	appState       *core.AppState
+	bus            *bus.EventBus
+	profileService *profile.Service
 }
 
 // NewProtocolHandler creates a new chat protocol handler
-func NewProtocolHandler(app *core.AppState, bus *bus.EventBus) *Service {
+func NewProtocolHandler(
+	app *core.AppState,
+	bus *bus.EventBus,
+	profile *profile.Service,
+) *Service {
 	return &Service{
-		appState: app,
-		bus:      bus,
+		appState:       app,
+		bus:            bus,
+		profileService: profile,
 	}
 }
 
@@ -42,6 +49,13 @@ func (s *Service) Register() {
 func (s *Service) handleChatStream(stream network.Stream) {
 	peerID := stream.Conn().RemotePeer()
 	log.Printf("Chat: Received new stream from %s", peerID.ShortString())
+
+	isFriend, _ := s.profileService.IsFriend(peerID.String())
+
+	if !isFriend {
+		log.Printf("Chat: Received new stream from %s, but they are not a friend. Closing...", peerID.ShortString())
+		return
+	}
 
 	reader := bufio.NewReader(stream)
 

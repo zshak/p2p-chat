@@ -352,3 +352,17 @@ func (s *Service) RespondToFriendRequest(receiverPeerId string, isAccepted bool)
 
 	return nil
 }
+
+func (s *Service) IsFriend(peerId string) (bool, error) {
+	r, err := s.relationshipRepo.GetRelationByPeerId(s.ctx, peerId)
+
+	if err != nil {
+		return false, err
+	}
+
+	if r.Status == types.FriendStatusApproved {
+		return true, nil
+	}
+
+	return false, nil
+}
