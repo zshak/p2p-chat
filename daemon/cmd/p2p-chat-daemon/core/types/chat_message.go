@@ -21,6 +21,7 @@ const (
 	FriendStatusSent                         // 1 - Request SENT by us to them
 	FriendStatusPending                      // 2 - Request RECEIVED by us from them, awaiting our action
 	FriendStatusApproved                     // 3 - Friends (request accepted by us or them)
+	FriendStatusRejected                     // 4 - Friends (request rejected)
 )
 
 // String makes FriendStatus implement fmt.Stringer

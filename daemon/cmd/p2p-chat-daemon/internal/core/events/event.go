@@ -56,7 +56,18 @@ type FriendRequestReceived struct {
 	FriendRequest types.FriendRequestData
 }
 
+type FriendResponseReceivedEvent struct {
+	SenderPeerId string
+	IsAccepted   bool
+	Timestamp    string
+}
+
 type FriendRequestSentEvent struct {
 	ReceiverPeerId string
 	Timestamp      time.Time
+}
+
+type FriendResponseSentEvent struct {
+	PeerId     string
+	IsAccepted bool
 }
