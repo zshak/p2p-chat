@@ -25,3 +25,9 @@ type ChatMessageRequest struct {
 type FriendRequest struct {
 	ReceiverPeerId string `json:"receiver_peer_id"`
 }
+
+// FriendRequestResponse defines the structure for accepting or rejecting a friend request via the API.
+type FriendRequestResponse struct {
+	PeerId     string `json:"peer_id"`
+	IsAccepted bool   `json:"is_accepted"`
+}

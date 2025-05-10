@@ -12,6 +12,7 @@ import (
 // RelationshipRepository defines the operations for persisting  messages.
 type RelationshipRepository interface {
 	Store(ctx context.Context, relationship types.FriendRelationship) error
+	UpdateStatus(ctx context.Context, relationship types.FriendRelationship) error
 }
 
 // --- SQLite Implementation ---
@@ -63,6 +64,40 @@ func (r *sqliteRelationshipRepository) Store(ctx context.Context, relationship t
 
 	if err != nil {
 		return fmt.Errorf("failed to insert relationship with %s: %w", relationship.PeerID, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit message store transaction: %w", err)
+	}
+
+	return nil
+}
+
+func (r *sqliteRelationshipRepository) UpdateStatus(ctx context.Context, relationship types.FriendRelationship) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	msgSQL := `
+		UPDATE relationships 
+		SET status = ?,
+			approved_at = ?
+		
+		WHERE peer_id = ?;
+`
+
+	approvedAtStr := relationship.ApprovedAt.Format(time.RFC3339)
+
+	_, err = tx.ExecContext(ctx, msgSQL,
+		relationship.Status,
+		approvedAtStr,
+		relationship.PeerID,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to update relationship with %s: %w", relationship.PeerID, err)
 	}
 
 	if err := tx.Commit(); err != nil {

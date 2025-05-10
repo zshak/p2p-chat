@@ -69,7 +69,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	}
 
 	chatHandler := chat.NewProtocolHandler(appState, eventbus)
-	profileHandle := profile.NewProtocolHandler(appState, eventbus)
+	profileHandle := profile.NewProtocolHandler(appState, eventbus, ctx, relationshipRepo)
 
 	_, server, handler, err := uiapi.StartAPIServer(ctx, cfg.API.ListenAddr, appState, eventbus, chatHandler, profileHandle)
 	eventbus.PublishAsync(events.ApiStartedEvent{})
@@ -138,7 +138,7 @@ func (app *Application) Start() error {
 		return err
 	}
 
-	profileCons, err := profile.NewConsumer(app.appstate, app.eventBus, app.relationshipRepo, app.ctx)
+	profileCons, err := profile.NewConsumer(app.appstate, app.eventBus, app.relationshipRepo, app.profileService, app.ctx)
 	if err != nil {
 		log.Println("Failed to create chat consumer")
 		return err

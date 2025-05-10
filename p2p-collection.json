@@ -1,212 +1,231 @@
 {
   "info": {
     "_postman_id": "22966356-851b-4e1a-8740-44d24461646e",
-    "description": "rest endpoints for p2p chat",
     "name": "p2p-chat",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "description": "rest endpoints for p2p chat",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "36399508"
   },
   "item": [
     {
-      "id": "f5567443-c57a-4d4b-bf64-926286655c44",
       "name": "enter password 1",
-      "protocolProfileBehavior": {
-        "disableBodyPruning": true
-      },
       "request": {
-        "body": {
-          "mode": "raw",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          },
-          "raw": "{\n    \"password\": \"crazy\"\n}"
-        },
+        "method": "POST",
         "header": [
           {
             "key": "Content-Type",
             "value": "application/json"
           }
         ],
-        "method": "POST",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"password\": \"crazy\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
         "url": {
+          "raw": "http://127.0.0.1:59578/setup/unlock-key",
+          "protocol": "http",
           "host": [
             "127",
             "0",
             "0",
             "1"
-          ],
-          "path": [
-            "setup",
-            "unlock-key"
           ],
           "port": "59578",
-          "protocol": "http",
-          "raw": "http://127.0.0.1:59578/setup/unlock-key"
-        }
-      },
-      "response": []
-    },
-    {
-      "id": "8232cd55-8dcf-4840-b1be-9d70e816be86",
-      "name": "enter password 2",
-      "protocolProfileBehavior": {
-        "disableBodyPruning": true
-      },
-      "request": {
-        "body": {
-          "mode": "raw",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          },
-          "raw": "{\n    \"password\": \"crazy2\"\n}"
-        },
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "method": "POST",
-        "url": {
-          "host": [
-            "127",
-            "0",
-            "0",
-            "1"
-          ],
           "path": [
             "setup",
             "unlock-key"
-          ],
-          "port": "59579",
-          "protocol": "http",
-          "raw": "http://127.0.0.1:59579/setup/unlock-key"
+          ]
         }
       },
       "response": []
     },
     {
-      "id": "b1c06164-a199-40f9-8274-44665eb646d5",
-      "name": "create key",
-      "protocolProfileBehavior": {
-        "disableBodyPruning": true
-      },
+      "name": "enter password 2",
       "request": {
-        "body": {
-          "mode": "raw",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          },
-          "raw": "{\n    \"password\": \"crazy2\"\n}"
-        },
+        "method": "POST",
         "header": [
           {
             "key": "Content-Type",
             "value": "application/json"
           }
         ],
-        "method": "POST",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"password\": \"crazy2\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
         "url": {
+          "raw": "http://127.0.0.1:59579/setup/unlock-key",
+          "protocol": "http",
           "host": [
             "127",
             "0",
             "0",
             "1"
           ],
+          "port": "59579",
+          "path": [
+            "setup",
+            "unlock-key"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "create key",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"password\": \"crazy2\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://127.0.0.1:59579/setup/create-key",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "59579",
           "path": [
             "setup",
             "create-key"
-          ],
-          "port": "59579",
-          "protocol": "http",
-          "raw": "http://127.0.0.1:59579/setup/create-key"
+          ]
         }
       },
       "response": []
     },
     {
-      "id": "5fe88a12-3400-476c-9891-de07c0c3f661",
       "name": "send message",
-      "protocolProfileBehavior": {
-        "disableBodyPruning": true
-      },
       "request": {
-        "body": {
-          "mode": "raw",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          },
-          "raw": "{\n    \"target_peer_id\": \"12D3KooWCvSxbpi2y6nx3QbnjBovxi1LP3MvvZ5eGqezuGty8iUg\",\n    \"message\": \"=================CRAZY==================\"\n}"
-        },
+        "method": "POST",
         "header": [
           {
             "key": "Content-Type",
             "value": "application/json"
           }
         ],
-        "method": "POST",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"target_peer_id\": \"12D3KooWCvSxbpi2y6nx3QbnjBovxi1LP3MvvZ5eGqezuGty8iUg\",\n    \"message\": \"=================CRAZY==================\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
         "url": {
+          "raw": "http://127.0.0.1:59578/chat/send",
+          "protocol": "http",
           "host": [
             "127",
             "0",
             "0",
             "1"
           ],
+          "port": "59578",
           "path": [
             "chat",
             "send"
-          ],
-          "port": "59578",
-          "protocol": "http",
-          "raw": "http://127.0.0.1:59578/chat/send"
+          ]
         }
       },
       "response": []
     },
     {
-      "id": "546de04a-ac4a-4188-9a82-2d927630a5f0",
       "name": "friend request",
-      "protocolProfileBehavior": {
-        "disableBodyPruning": true
-      },
       "request": {
-        "body": {
-          "mode": "raw",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          },
-          "raw": "{\n    \"receiver_peer_id\": \"12D3KooWCvSxbpi2y6nx3QbnjBovxi1LP3MvvZ5eGqezuGty8iUg\"\n}"
-        },
+        "method": "POST",
         "header": [
           {
             "key": "Content-Type",
             "value": "application/json"
           }
         ],
-        "method": "POST",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"receiver_peer_id\": \"12D3KooWCvSxbpi2y6nx3QbnjBovxi1LP3MvvZ5eGqezuGty8iUg\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
         "url": {
+          "raw": "http://127.0.0.1:59578/profile/friend",
+          "protocol": "http",
           "host": [
             "127",
             "0",
             "0",
             "1"
           ],
+          "port": "59578",
           "path": [
             "profile",
             "friend"
-          ],
-          "port": "59578",
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "friend response",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"peer_id\": \"12D3KooWHCJUPba5doubCfLFeX55FYSBbkPGZN486HRYNPUSuKYm\",\n    \"is_accepted\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://127.0.0.1:59579/profile/friend/response",
           "protocol": "http",
-          "raw": "http://127.0.0.1:59578/profile/friend"
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "59579",
+          "path": [
+            "profile",
+            "friend",
+            "response"
+          ]
         }
       },
       "response": []
