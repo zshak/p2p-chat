@@ -15,6 +15,7 @@ func setupRoutes(mux *http.ServeMux, handler *ApiHandler) {
 
 	mux.HandleFunc("/profile/friend/request", handler.handleFriendRequest)
 	mux.HandleFunc("/profile/friend/response", handler.handleFriendRequestResponse)
+	mux.HandleFunc("/profile/friends", handler.handleGetFriends)
 
 	mux.HandleFunc("/ws", handler.handleWebSocket)
 }

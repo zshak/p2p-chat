@@ -268,6 +268,29 @@
         }
       },
       "response": []
+    },
+    {
+      "name": "Get Friends :(",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://127.0.0.1:59579/profile/friends",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "59579",
+          "path": [
+            "profile",
+            "friends"
+          ]
+        }
+      },
+      "response": []
     }
   ]
 }

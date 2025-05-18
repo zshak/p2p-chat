@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -56,4 +57,29 @@ func (h *ApiHandler) handleFriendRequestResponse(w http.ResponseWriter, r *http.
 	// --- Send Success Response ---
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Responded To Friend Request successfully")
+}
+
+func (h *ApiHandler) handleGetFriends(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	res, err := h.profileService.GetFriends()
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error getting friends: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	responseBytes, err := json.Marshal(res)
+	if err != nil {
+		log.Printf("API Handler: Error marshalling friends data to JSON: %v", err)
+		http.Error(w, "Failed to prepare friends list response", http.StatusInternalServerError)
+		return
+	}
+
+	// --- Send Success Response -
+	w.Write(responseBytes)
+	w.WriteHeader(http.StatusOK)
 }
