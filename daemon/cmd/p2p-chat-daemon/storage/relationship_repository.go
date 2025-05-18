@@ -15,6 +15,7 @@ type RelationshipRepository interface {
 	Store(ctx context.Context, relationship types.FriendRelationship) error
 	UpdateStatus(ctx context.Context, relationship types.FriendRelationship) error
 	GetRelationByPeerId(ctx context.Context, peerId string) (types.FriendRelationship, error)
+	GetAcceptedRelations(ctx context.Context) ([]types.FriendRelationship, error)
 }
 
 // --- SQLite Implementation ---
@@ -152,6 +153,61 @@ func (r *sqliteRelationshipRepository) GetRelationByPeerId(ctx context.Context, 
 	}
 
 	return rel, nil
+}
+
+func (r *sqliteRelationshipRepository) GetAcceptedRelations(ctx context.Context) ([]types.FriendRelationship, error) {
+	sqlStmt := `SELECT peer_id, status, requested_at, approved_at
+                FROM relationships WHERE Status = ?
+				order by peer_id ASC;`
+
+	rows, err := r.db.QueryContext(ctx, sqlStmt, types.FriendStatusApproved)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []types.FriendRelationship{}, sql.ErrNoRows
+		}
+
+		return []types.FriendRelationship{}, fmt.Errorf("failed to get relationships %w", err)
+	}
+
+	var friends []types.FriendRelationship
+	for rows.Next() {
+		var rel types.FriendRelationship
+		var requestedAtStr, approvedAtStr sql.NullString
+		var statusText string
+
+		var errScan error
+		errScan = rows.Scan(
+			&rel.PeerID,
+			&statusText,
+			&requestedAtStr,
+			&approvedAtStr,
+		)
+		rel.Status = stringToFriendStatus(statusText)
+
+		t, err := time.Parse(time.RFC3339Nano, requestedAtStr.String)
+		if err == nil {
+			rel.RequestedAt = t
+		} else {
+			log.Printf("WARN: Could not parse requested_at '%s' for peer %s: %v", requestedAtStr.String, rel.PeerID, err)
+		}
+
+		t, err = time.Parse(time.RFC3339Nano, approvedAtStr.String)
+		if err == nil {
+			rel.ApprovedAt = t
+		} else {
+			log.Printf("WARN: Could not parse approved_at '%s' for peer %s: %v", approvedAtStr.String, rel.PeerID, err)
+		}
+
+		if errScan != nil {
+			log.Printf("Storage: Error scanning approved friend row: %v", errScan)
+			return nil, fmt.Errorf("error scanning approved friend row: %w", errScan)
+		}
+
+		friends = append(friends, rel)
+	}
+
+	return friends, nil
 }
 
 func stringToFriendStatus(s string) types.FriendStatus {

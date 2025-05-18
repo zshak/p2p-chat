@@ -366,3 +366,14 @@ func (s *Service) IsFriend(peerId string) (bool, error) {
 
 	return false, nil
 }
+
+func (s *Service) GetFriends() ([]types.FriendRelationship, error) {
+	r, err := s.relationshipRepo.GetAcceptedRelations(s.ctx)
+
+	if err != nil {
+		log.Printf("Error getting friends: %v", err)
+		return nil, err
+	}
+
+	return r, nil
+}
