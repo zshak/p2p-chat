@@ -70,6 +70,17 @@ func (s *Service) Stop() {
 	log.Println("Connection Service: Stopped.")
 }
 
+func (s *Service) IsOnline(id peer.ID) bool {
+	s.statusMutex.RLock()
+	defer s.statusMutex.RUnlock()
+
+	isOnline, known := s.lastKnownStatus[id]
+	if !known {
+		return false
+	}
+	return isOnline
+}
+
 func (s *Service) statusCheckLoop() {
 	defer s.wg.Done()
 	log.Println("Connection Service: Status check loop initiated.")

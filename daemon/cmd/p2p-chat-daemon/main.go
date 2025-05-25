@@ -14,7 +14,7 @@ func main() {
 
 	//golog.SetAllLoggers(golog.LevelWarn)
 
-	//golog.SetLogLevel("autonat", "debug")
+	//golog.SetLogLevel("pubsub", "debug")
 	//golog.SetLogLevel("autorelay", "debug")
 	// golog.SetLogLevel("dht", "warn")
 
