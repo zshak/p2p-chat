@@ -11,28 +11,32 @@ import (
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/appstate"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/chat"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/config"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/connection"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/discovery"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/peer"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/profile"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/pubsub"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/storage"
 	"syscall"
 	"time"
 )
 
 type Application struct {
-	ctx              context.Context
-	eventBus         *bus.EventBus
-	config           *config.Config
-	appstate         *core.AppState
-	chatService      *chat.Service
-	profileService   *profile.Service
-	cancel           context.CancelFunc
-	server           *http.Server
-	messageRepo      storage.MessageRepository
-	relationshipRepo storage.RelationshipRepository
+	ctx               context.Context
+	eventBus          *bus.EventBus
+	config            *config.Config
+	appstate          *core.AppState
+	chatService       *chat.Service
+	profileService    *profile.Service
+	connectionService *connection.Service
+	pubsubService     *pubsub.Service
+	cancel            context.CancelFunc
+	server            *http.Server
+	messageRepo       storage.MessageRepository
+	relationshipRepo  storage.RelationshipRepository
 }
 
 func NewApplication(cfg *config.Config) (*Application, error) {
@@ -70,6 +74,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 
 	profileHandle := profile.NewProtocolHandler(appState, eventbus, ctx, relationshipRepo)
 	chatHandler := chat.NewProtocolHandler(appState, eventbus, profileHandle)
+	connectionService := connection.NewConnectionService(ctx, appState, relationshipRepo, eventbus)
 
 	_, server, handler, err := uiapi.StartAPIServer(ctx, cfg.API.ListenAddr, appState, eventbus, chatHandler, profileHandle)
 	eventbus.PublishAsync(events.ApiStartedEvent{})
@@ -83,16 +88,17 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	}
 
 	app := &Application{
-		ctx:              ctx,
-		config:           cfg,
-		appstate:         appState,
-		eventBus:         eventbus,
-		chatService:      chatHandler,
-		profileService:   profileHandle,
-		cancel:           cancel,
-		server:           server,
-		messageRepo:      msgRepo,
-		relationshipRepo: relationshipRepo,
+		ctx:               ctx,
+		config:            cfg,
+		appstate:          appState,
+		eventBus:          eventbus,
+		chatService:       chatHandler,
+		profileService:    profileHandle,
+		connectionService: connectionService,
+		cancel:            cancel,
+		server:            server,
+		messageRepo:       msgRepo,
+		relationshipRepo:  relationshipRepo,
 	}
 
 	return app, nil
@@ -144,10 +150,22 @@ func (app *Application) Start() error {
 		return err
 	}
 
+	pubsubService, err := pubsub.NewPubSubService(app.ctx, app.appstate)
+	if err != nil {
+		return fmt.Errorf("failed to create pubsub service: %w", err)
+	}
+
+	app.pubsubService = pubsubService
+	err = pubsubService.Start()
+	if err != nil {
+		return fmt.Errorf("failed to start pubsub service: %w", err)
+	}
+
 	go app.chatService.Register()
 	go app.profileService.Register()
 	go chatCons.Start()
 	go profileCons.Start()
+	go app.connectionService.Start()
 
 	return nil
 }
@@ -186,6 +204,15 @@ func (app *Application) Stop() {
 			log.Printf("Error closing libp2p node: %v", err)
 		} else {
 			log.Println("Libp2p node closed.")
+		}
+	}
+
+	// Stop pubsub service
+	if app.pubsubService != nil {
+		if err := app.pubsubService.Stop(); err != nil {
+			log.Printf("Error stopping pubsub service: %v", err)
+		} else {
+			log.Println("PubSub service stopped.")
 		}
 	}
 

@@ -71,3 +71,10 @@ type FriendResponseSentEvent struct {
 	PeerId     string
 	IsAccepted bool
 }
+
+type FriendOnlineStatusChangedEvent struct {
+	PeerID   string
+	IsOnline bool
+	LastSeen time.Time
+	RTT      time.Duration
+}
