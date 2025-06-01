@@ -114,5 +114,6 @@ func (s *GroupKeyStore) Decrypt(groupID string, ciphertextWithNonce []byte) ([]b
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt/authenticate message for group %s: %w", groupID, err)
 	}
+
 	return plaintext, nil
 }
