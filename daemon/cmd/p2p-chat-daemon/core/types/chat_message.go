@@ -47,3 +47,19 @@ type FriendRelationship struct {
 	RequestedAt time.Time    // Timestamp when request was sent/received
 	ApprovedAt  time.Time    // Timestamp when approved
 }
+
+// GroupKey represents the group key.
+type GroupKey struct {
+	GroupId   string
+	Key       []byte
+	CreatedAt time.Time
+}
+
+// StoredGroupMessage represents the group message.
+type StoredGroupMessage struct {
+	ID               int64
+	GroupID          string
+	SenderPeerID     string
+	EncryptedContent []byte
+	SentAt           time.Time
+}
