@@ -13,7 +13,7 @@ const rl = readline.createInterface({
 
 // Default peer ID
 // const DEFAULT_PEER_ID = '12D3KooWCvSxbpi2y6nx3QbnjBovxi1LP3MvvZ5eGqezuGty8iUg';
-const DEFAULT_PEER_ID = '12D3KooWSdPV93Lu69xwaWSocfBLYp5UbQNQ8e1usjXQZpVrcatU';
+const DEFAULT_PEER_ID = '12D3KooWCvSxbpi2y6nx3QbnjBovxi1LP3MvvZ5eGqezuGty8iUg';
 
 // Connection opened
 socket.on('open', () => {

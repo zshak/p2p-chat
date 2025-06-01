@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  font-family: 'Roboto', sans-serif;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: #fdf5f7;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #f48fb1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #e91e63;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@media (max-width: 600px) {
+  .MuiContainer-root {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+.MuiBadge-colorSuccess {
+  background-color: #4CAF50 !important;
+}
+
+.MuiBadge-colorError {
+  background-color: #F44336 !important;
+}
+
+.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #E91E63 !important;
+  border-width: 2px;
+}
+
+button {
+  transition: all 0.2s ease-in-out !important;
+}
+
+.MuiPaper-root {
+  transition: all 0.3s ease-in-out;
+}
+
+.message-bubble {
+  animation: fadeIn 0.3s ease-in-out;
+  position: relative;
+}
+
+.active-user {
+  background-color: rgba(233, 30, 99, 0.08);
+  border-radius: 8px;
+}
