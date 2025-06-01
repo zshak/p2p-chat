@@ -194,3 +194,8 @@ func (s *Service) SendMessage(targetPeerId string, message string) error {
 
 	return nil
 }
+
+//// CreateGroup creates a group
+//func (s *Service) CreateGroup(peers []string) error {
+//
+//}
