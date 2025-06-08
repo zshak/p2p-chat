@@ -56,6 +56,7 @@ func NewProtocolHandler(
 // Register registers the chat protocol handler with the node
 func (s *Service) Register() {
 	log.Printf("Registering chat protocol handler (%s)...", core.ChatProtocolID)
+
 	(*s.appState.Node).SetStreamHandler(core.ChatProtocolID, s.handleChatStream)
 	(*s.appState.Node).SetStreamHandler(core.GroupChatProtocolID, s.handleGroupRequest)
 }
