@@ -11,6 +11,7 @@ import (
 // GroupMemberRepository defines operations for managing group memberships.
 type GroupMemberRepository interface {
 	AddMembers(ctx context.Context, groupID string, peerIDs []string) error // New method
+	GetGroupsWithMembers(ctx context.Context) (map[string][]string, error)
 }
 
 // --- SQLite Implementation ---
@@ -78,4 +79,35 @@ func (r *sqliteGroupMemberRepository) AddMembers(ctx context.Context, groupID st
 
 	log.Printf("Storage: Added %d new member(s) to group %s. Total attempted: %d", addedCount, groupID, len(peerIDs))
 	return nil
+}
+
+// GetGroupsWithMembers returns a map where keys are group IDs and values are lists of peer IDs that are members of those groups
+func (r *sqliteGroupMemberRepository) GetGroupsWithMembers(ctx context.Context) (map[string][]string, error) {
+	// Initialize the result map
+	result := make(map[string][]string)
+
+	// Query to get all group members
+	rows, err := r.db.QueryContext(ctx, "SELECT group_id, peer_id FROM group_members ORDER BY group_id")
+	if err != nil {
+		return nil, fmt.Errorf("failed to query group members: %w", err)
+	}
+	defer rows.Close()
+
+	// Process each row
+	for rows.Next() {
+		var groupID, peerID string
+		if err := rows.Scan(&groupID, &peerID); err != nil {
+			return nil, fmt.Errorf("failed to scan group member row: %w", err)
+		}
+
+		// Append the peer ID to the appropriate group in the result map
+		result[groupID] = append(result[groupID], peerID)
+	}
+
+	// Check for errors from iterating over rows
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error while iterating group members: %w", err)
+	}
+
+	return result, nil
 }

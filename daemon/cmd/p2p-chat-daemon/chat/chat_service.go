@@ -19,8 +19,10 @@ import (
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/profile"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/pubsub"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/storage"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -32,6 +34,9 @@ type Service struct {
 	groupKeyStoreService *identity.GroupKeyStore
 	groupMemberRepo      storage.GroupMemberRepository
 	KeyRepository        storage.KeyRepository
+	pubSubService        *pubsub.Service
+	groupChats           map[string][]string
+	mu                   sync.Mutex
 }
 
 // NewProtocolHandler creates a new chat protocol handler
@@ -42,7 +47,8 @@ func NewProtocolHandler(
 	groupKeyStore *identity.GroupKeyStore,
 	groupMemberRepo storage.GroupMemberRepository,
 	keyRepo storage.KeyRepository,
-) *Service {
+	pubSubService *pubsub.Service) *Service {
+
 	return &Service{
 		appState:             app,
 		bus:                  bus,
@@ -50,6 +56,7 @@ func NewProtocolHandler(
 		groupKeyStoreService: groupKeyStore,
 		groupMemberRepo:      groupMemberRepo,
 		KeyRepository:        keyRepo,
+		pubSubService:        pubSubService,
 	}
 }
 
@@ -59,6 +66,29 @@ func (s *Service) Register() {
 
 	(*s.appState.Node).SetStreamHandler(core.ChatProtocolID, s.handleChatStream)
 	(*s.appState.Node).SetStreamHandler(core.GroupChatProtocolID, s.handleGroupRequest)
+
+	s.startListeningToGroupChatMessages()
+}
+
+func (s *Service) startListeningToGroupChatMessages() {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	groupChats, err := s.groupMemberRepo.GetGroupsWithMembers(ctx)
+	if err != nil {
+		log.Printf("Error getting group chats: %v", err)
+		return
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.groupChats = groupChats
+
+	for id, _ := range s.groupChats {
+		log.Printf("Starting to listen to group chat messages for topic %s", core.GroupChatTopic+id)
+		s.pubSubService.JoinTopic(core.GroupChatTopic + id)
+	}
 }
 
 // handleChatStream processes incoming chat streams
@@ -306,6 +336,14 @@ func (s *Service) CreateGroup(peers []string, groupChatName string) error {
 		return err
 	}
 
+	log.Printf("GROUP Chat API: joining topic: %s", core.GroupChatTopic+id)
+	err = s.pubSubService.JoinTopic(core.GroupChatTopic + id)
+
+	if err != nil {
+		log.Printf("GROUP Chat API: Error joining topic: %v", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -348,6 +386,13 @@ func (s *Service) handleGroupRequest(stream network.Stream) {
 
 	if err != nil {
 		log.Printf("Group Request Handler: Error adding members to group: %v", err)
+	}
+
+	log.Printf("GROUP Chat API: joining topic: %s", core.GroupChatTopic+request.Id)
+
+	err = s.pubSubService.JoinTopic(core.GroupChatTopic + request.Id)
+	if err != nil {
+		log.Printf("GROUP Chat API: Error joining topic: %v", err)
 	}
 
 	stream.Close()

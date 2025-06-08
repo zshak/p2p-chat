@@ -22,6 +22,10 @@ const (
 )
 
 const (
+	GroupChatTopic = "/p2p-chat-daemon/group-chat/1.0.0/"
+)
+
+const (
 	StateInitializing DaemonState = iota
 	StateWaitingForKey
 	StateWaitingForPassword

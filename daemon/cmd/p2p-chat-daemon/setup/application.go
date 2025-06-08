@@ -87,10 +87,15 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		return nil, fmt.Errorf("failed to create key repository: %w", err)
 	}
 
+	pubsubService, err := pubsub.NewPubSubService(ctx, appState)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pubsub service: %w", err)
+	}
+
 	keyService := identity.NewGroupKeyStore(keyRepo, ctx)
 
 	profileHandle := profile.NewProtocolHandler(appState, eventbus, ctx, relationshipRepo)
-	chatHandler := chat.NewProtocolHandler(appState, eventbus, profileHandle, keyService, groupMemberRepo, keyRepo)
+	chatHandler := chat.NewProtocolHandler(appState, eventbus, profileHandle, keyService, groupMemberRepo, keyRepo, pubsubService)
 	connectionService := connection.NewConnectionService(ctx, appState, relationshipRepo, eventbus)
 
 	_, server, handler, err := uiapi.StartAPIServer(ctx, cfg.API.ListenAddr, appState, eventbus, chatHandler, profileHandle)
@@ -116,6 +121,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		server:            server,
 		messageRepo:       msgRepo,
 		relationshipRepo:  relationshipRepo,
+		pubsubService:     pubsubService,
 	}
 
 	return app, nil
@@ -167,13 +173,7 @@ func (app *Application) Start() error {
 		return err
 	}
 
-	pubsubService, err := pubsub.NewPubSubService(app.ctx, app.appstate)
-	if err != nil {
-		return fmt.Errorf("failed to create pubsub service: %w", err)
-	}
-
-	app.pubsubService = pubsubService
-	err = pubsubService.Start()
+	err = app.pubsubService.Start()
 	if err != nil {
 		return fmt.Errorf("failed to start pubsub service: %w", err)
 	}

@@ -38,20 +38,9 @@ type Service struct {
 
 // NewPubSubService creates a new pubsub service
 func NewPubSubService(ctx context.Context, appState *core.AppState) (*Service, error) {
-	if appState.Node == nil {
-		return nil, fmt.Errorf("node not initialized")
-	}
-
-	// Create a new PubSub service using GossipSub
-	pubsubService, err := pubsub.NewGossipSub(ctx, *appState.Node)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pubsub service: %w", err)
-	}
-
 	return &Service{
 		ctx:      ctx,
 		appState: appState,
-		pubsub:   pubsubService,
 		topics:   make(map[string]*pubsub.Topic),
 		subs:     make(map[string]*pubsub.Subscription),
 	}, nil
@@ -59,6 +48,14 @@ func NewPubSubService(ctx context.Context, appState *core.AppState) (*Service, e
 
 // Start initializes the pubsub topics and subscriptions
 func (s *Service) Start() error {
+	// Create a new PubSub service using GossipSub
+	pubsubService, err := pubsub.NewGossipSub(s.ctx, *s.appState.Node)
+	if err != nil {
+		return fmt.Errorf("failed to create pubsub service: %w", err)
+	}
+
+	s.pubsub = pubsubService
+
 	// Join the online announcement topic
 	onlineTopic, err := s.pubsub.Join(OnlineAnnouncementTopic)
 	if err != nil {
@@ -79,6 +76,27 @@ func (s *Service) Start() error {
 
 	// Announce that we're online
 	go s.announceOnline("")
+
+	return nil
+}
+
+// JoinTopic joins pubsub topic
+func (s *Service) JoinTopic(topic string) error {
+	// Join the online announcement topic
+	onlineTopic, err := s.pubsub.Join(topic)
+	if err != nil {
+		return fmt.Errorf("failed to join online announcement topic: %w", err)
+	}
+
+	// Subscribe to the online announcement topic
+	sub, err := onlineTopic.Subscribe()
+	if err != nil {
+		log.Printf("Error subscribing to online announcement topic: %v", err)
+		return fmt.Errorf("failed to subscribe to online announcement topic: %w", err)
+	}
+
+	// Start listening for messages
+	go s.handleOnlineAnnouncements(sub)
 
 	return nil
 }
