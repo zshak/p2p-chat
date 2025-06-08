@@ -4,26 +4,34 @@ import (
 	"bufio"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/gibson042/canonicaljson-go"
+	"github.com/google/uuid"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"io"
 	"log"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/core/types"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/identity"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/profile"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/storage"
 	"strings"
 	"time"
 )
 
 // Service manages the chat protocol
 type Service struct {
-	appState       *core.AppState
-	bus            *bus.EventBus
-	profileService *profile.Service
+	appState             *core.AppState
+	bus                  *bus.EventBus
+	profileService       *profile.Service
+	groupKeyStoreService *identity.GroupKeyStore
+	groupMemberRepo      storage.GroupMemberRepository
+	KeyRepository        storage.KeyRepository
 }
 
 // NewProtocolHandler creates a new chat protocol handler
@@ -31,11 +39,17 @@ func NewProtocolHandler(
 	app *core.AppState,
 	bus *bus.EventBus,
 	profile *profile.Service,
+	groupKeyStore *identity.GroupKeyStore,
+	groupMemberRepo storage.GroupMemberRepository,
+	keyRepo storage.KeyRepository,
 ) *Service {
 	return &Service{
-		appState:       app,
-		bus:            bus,
-		profileService: profile,
+		appState:             app,
+		bus:                  bus,
+		profileService:       profile,
+		groupKeyStoreService: groupKeyStore,
+		groupMemberRepo:      groupMemberRepo,
+		KeyRepository:        keyRepo,
 	}
 }
 
@@ -43,6 +57,7 @@ func NewProtocolHandler(
 func (s *Service) Register() {
 	log.Printf("Registering chat protocol handler (%s)...", core.ChatProtocolID)
 	(*s.appState.Node).SetStreamHandler(core.ChatProtocolID, s.handleChatStream)
+	(*s.appState.Node).SetStreamHandler(core.GroupChatProtocolID, s.handleGroupRequest)
 }
 
 // handleChatStream processes incoming chat streams
@@ -195,7 +210,144 @@ func (s *Service) SendMessage(targetPeerId string, message string) error {
 	return nil
 }
 
-//// CreateGroup creates a group
-//func (s *Service) CreateGroup(peers []string) error {
-//
-//}
+// CreateGroup creates a group
+func (s *Service) CreateGroup(peers []string, groupChatName string) error {
+	id := uuid.New().String()
+
+	k, e := s.groupKeyStoreService.GenerateNewKey(id)
+
+	if e != nil {
+		log.Printf("GROUP Chat API: Error generating new key: %v", e)
+		return e
+	}
+
+	req := GroupChatRequest{
+		MemberPeers: peers,
+		Name:        groupChatName,
+		Key:         k,
+		Id:          id,
+	}
+
+	requestBytes, err := canonicaljson.Marshal(req)
+
+	if err != nil {
+		log.Printf("GROUP Chat API: Error serializing request: %v", err)
+		return err
+	}
+
+	for _, p := range peers {
+		targetPID, err := peer.Decode(p)
+		if err != nil {
+			return errors.New(fmt.Sprintf("Invalid target PeerID format: %v", err))
+		}
+
+		connectedness := (*s.appState.Node).Network().Connectedness(targetPID)
+
+		if connectedness != network.Connected {
+			log.Printf("GROUP Chat API: Not connected to %s (State: %s). Attempting connection...", targetPID.ShortString(), connectedness)
+
+			addrInfo := (*s.appState.Node).Peerstore().PeerInfo(targetPID)
+			if len(addrInfo.Addrs) == 0 {
+				log.Printf("GROUP Chat API: No addresses found in Peerstore for %s. Cannot connect.", targetPID.ShortString())
+				return errors.New(fmt.Sprintf("Cannot connect to peer %s: No known addresses", targetPID.ShortString()))
+			}
+
+			// Use a separate context and timeout for the connection attempt
+			connectCtx, connectCancel := context.WithTimeout(context.Background(), 60*time.Second)
+			defer connectCancel()
+
+			err = (*s.appState.Node).Connect(connectCtx, addrInfo)
+			if err != nil {
+				log.Printf("GROUP Chat API: Failed to connect to %s: %v", targetPID.ShortString(), err)
+				return errors.New(fmt.Sprintf("Failed to establish connection with peer %s: %v", targetPID.ShortString(), err))
+			}
+			log.Printf("GROUP Chat API: Successfully connected to %s.", targetPID.ShortString())
+		} else {
+			log.Printf("GROUP Chat API: Already connected to %s.", targetPID.ShortString())
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx = network.WithAllowLimitedConn(ctx, "mito")
+		defer cancel()
+
+		stream, err := (*s.appState.Node).NewStream(ctx, targetPID, core.GroupChatProtocolID)
+		if err != nil {
+			log.Printf("GROUP Chat API: Failed to open stream to %s: %v", targetPID.ShortString(), err)
+			return errors.New(fmt.Sprintf("Failed to connect/open stream to peer %s: %v", targetPID.ShortString(), err))
+		}
+		log.Printf("GROUP Chat API: Stream opened successfully to %s", targetPID.ShortString())
+
+		// --- Send Group Chat Request ---
+		writer := bufio.NewWriter(stream)
+
+		_, err = writer.Write(requestBytes)
+		if err != nil {
+			stream.Reset()
+			return fmt.Errorf("failed to write message content: %w", err)
+		}
+		err = writer.Flush()
+
+		if err != nil {
+			stream.Reset()
+			return fmt.Errorf("failed to flush stream writer: %w", err)
+		}
+
+		stream.Close()
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err = s.groupMemberRepo.AddMembers(ctx, id, peers)
+
+	if err != nil {
+		log.Printf("GROUP Chat API: Error adding members to group: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+// handleGroupRequest processes incoming group creation request
+func (s *Service) handleGroupRequest(stream network.Stream) {
+	peerID := stream.Conn().RemotePeer()
+	log.Printf("GroupRequest: Received new stream from %s", peerID.ShortString())
+
+	receivedBytes, err := io.ReadAll(stream)
+
+	if err != nil {
+		log.Printf("Group Request Handler: Error reading group request from %s: %v", peerID.String(), err)
+		stream.Reset()
+		return
+	}
+
+	var request GroupChatRequest
+	err = json.Unmarshal(receivedBytes, &request)
+
+	if err != nil {
+		log.Printf("Group Request Handler: Error deserializing group request from %s: %v", peerID.String(), err)
+		stream.Reset()
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err = s.KeyRepository.Store(ctx, types.GroupKey{
+		GroupId:   request.Id,
+		Key:       request.Key,
+		CreatedAt: time.Now(),
+	})
+
+	if err != nil {
+		log.Printf("Group Request Handler: Error storing group key: %v", err)
+	}
+
+	err = s.groupMemberRepo.AddMembers(ctx, request.Id, request.MemberPeers)
+
+	if err != nil {
+		log.Printf("Group Request Handler: Error adding members to group: %v", err)
+	}
+
+	stream.Close()
+}

@@ -14,6 +14,7 @@ import (
 type DaemonState int
 
 const (
+	GroupChatProtocolID      = "/p2p-chat-daemon/chat/1.0.0"
 	ChatProtocolID           = "/p2p-chat-daemon/chat/1.0.0"
 	FriendRequestProtocolID  = "/p2p-chat-daemon/friend-request/1.0.0"
 	FriendResponseProtocolID = "/p2p-chat-daemon/friend-response/1.0.0"

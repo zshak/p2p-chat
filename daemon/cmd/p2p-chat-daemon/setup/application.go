@@ -13,6 +13,7 @@ import (
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/config"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/connection"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/discovery"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/identity"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
@@ -69,11 +70,27 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	if err != nil {
 		db.Close()
 		cancel()
-		return nil, fmt.Errorf("failed to create message repository: %w", err)
+		return nil, fmt.Errorf("failed to create relationship repository: %w", err)
 	}
 
+	keyRepo, err := storage.NewSQLiteKeyRepository(db)
+	if err != nil {
+		db.Close()
+		cancel()
+		return nil, fmt.Errorf("failed to create key repository: %w", err)
+	}
+
+	groupMemberRepo, err := storage.NewSQLiteGroupMemberRepository(db)
+	if err != nil {
+		db.Close()
+		cancel()
+		return nil, fmt.Errorf("failed to create key repository: %w", err)
+	}
+
+	keyService := identity.NewGroupKeyStore(keyRepo, ctx)
+
 	profileHandle := profile.NewProtocolHandler(appState, eventbus, ctx, relationshipRepo)
-	chatHandler := chat.NewProtocolHandler(appState, eventbus, profileHandle)
+	chatHandler := chat.NewProtocolHandler(appState, eventbus, profileHandle, keyService, groupMemberRepo, keyRepo)
 	connectionService := connection.NewConnectionService(ctx, appState, relationshipRepo, eventbus)
 
 	_, server, handler, err := uiapi.StartAPIServer(ctx, cfg.API.ListenAddr, appState, eventbus, chatHandler, profileHandle)

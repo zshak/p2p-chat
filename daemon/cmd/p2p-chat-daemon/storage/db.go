@@ -108,7 +108,7 @@ func (db *DB) ensureCreation() error {
 			group_id TEXT NOT NULL,
 			sender_peer_id TEXT NOT NULL,
 			content BLOB NOT NULL,
-			sent_at INTEGER NOT NULL,
+			sent_at INTEGER NOT NULL
 		);
 
 		CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages (recipient_peer_id);
