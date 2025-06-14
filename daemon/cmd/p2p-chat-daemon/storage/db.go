@@ -92,6 +92,25 @@ func (db *DB) ensureCreation() error {
 			 approved_at TEXT DEFAULT NULL
 		);
 
+		CREATE TABLE IF NOT EXISTS group_keys (
+			group_id TEXT PRIMARY KEY NOT NULL,
+			group_key BLOB NOT NULL,
+			created_at INTEGER NOT NULL
+		);
+
+		CREATE TABLE IF NOT EXISTS group_members (
+			group_id TEXT NOT NULL,
+			peer_id TEXT NOT NULL
+		);
+
+		CREATE TABLE IF NOT EXISTS group_messages (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			group_id TEXT NOT NULL,
+			sender_peer_id TEXT NOT NULL,
+			content BLOB NOT NULL,
+			sent_at INTEGER NOT NULL
+		);
+
 		CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages (recipient_peer_id);
 		CREATE INDEX IF NOT EXISTS idx_relationships_peer_id ON relationships (peer_id);
 	`

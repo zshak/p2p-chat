@@ -31,3 +31,13 @@ type FriendRequestResponse struct {
 	PeerId     string `json:"peer_id"`
 	IsAccepted bool   `json:"is_accepted"`
 }
+
+type CreateGroupChatRequest struct {
+	MemberPeerIds []string `json:"member_peers"`
+	ChatName      string   `json:"name"`
+}
+
+type SendGroupChatMessageRequest struct {
+	Message string `json:"message"`
+	GroupId string `json:"group_id"`
+}
