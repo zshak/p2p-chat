@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/core/types"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/identity"
 	"time"
 
 	"github.com/libp2p/go-libp2p-pubsub"
@@ -29,20 +31,22 @@ type OnlineAnnouncement struct {
 
 // Service manages the pubsub functionality
 type Service struct {
-	ctx      context.Context
-	appState *core.AppState
-	pubsub   *pubsub.PubSub
-	topics   map[string]*pubsub.Topic
-	subs     map[string]*pubsub.Subscription
+	ctx                  context.Context
+	appState             *core.AppState
+	pubsub               *pubsub.PubSub
+	topics               map[string]*pubsub.Topic
+	subs                 map[string]*pubsub.Subscription
+	groupKeyStoreService *identity.GroupKeyStore
 }
 
 // NewPubSubService creates a new pubsub service
-func NewPubSubService(ctx context.Context, appState *core.AppState) (*Service, error) {
+func NewPubSubService(ctx context.Context, appState *core.AppState, groupKeyStoreService *identity.GroupKeyStore) (*Service, error) {
 	return &Service{
-		ctx:      ctx,
-		appState: appState,
-		topics:   make(map[string]*pubsub.Topic),
-		subs:     make(map[string]*pubsub.Subscription),
+		ctx:                  ctx,
+		appState:             appState,
+		topics:               make(map[string]*pubsub.Topic),
+		subs:                 make(map[string]*pubsub.Subscription),
+		groupKeyStoreService: groupKeyStoreService,
 	}, nil
 }
 
@@ -72,39 +76,39 @@ func (s *Service) Start() error {
 	s.subs[OnlineAnnouncementTopic] = sub
 
 	// Start listening for messages
-	go s.handleOnlineAnnouncements(sub)
-
-	// Announce that we're online
-	go s.announceOnline("")
+	go s.handleIncomingMessages(sub, "")
 
 	return nil
 }
 
 // JoinTopic joins pubsub topic
-func (s *Service) JoinTopic(topic string) error {
-	// Join the online announcement topic
-	onlineTopic, err := s.pubsub.Join(topic)
+func (s *Service) JoinTopic(topicName string, groupId string) error {
+	// Join the online announcement topicName
+	topic, err := s.pubsub.Join(topicName)
 	if err != nil {
-		return fmt.Errorf("failed to join online announcement topic: %w", err)
+		return fmt.Errorf("failed to join online announcement topicName: %w", err)
 	}
 
-	// Subscribe to the online announcement topic
-	sub, err := onlineTopic.Subscribe()
+	s.topics[topicName] = topic
+
+	// Subscribe to the online announcement topicName
+	sub, err := topic.Subscribe()
 	if err != nil {
-		log.Printf("Error subscribing to online announcement topic: %v", err)
-		return fmt.Errorf("failed to subscribe to online announcement topic: %w", err)
+		log.Printf("Error subscribing to online announcement topicName: %v", err)
+		return fmt.Errorf("failed to subscribe to online announcement topicName: %w", err)
 	}
 
 	// Start listening for messages
-	go s.handleOnlineAnnouncements(sub)
+	go s.handleIncomingMessages(sub, groupId)
 
 	return nil
 }
 
-// handleOnlineAnnouncements processes incoming online announcements
-func (s *Service) handleOnlineAnnouncements(sub *pubsub.Subscription) {
+// handleIncomingMessages processes incoming online announcements
+func (s *Service) handleIncomingMessages(sub *pubsub.Subscription, groupId string) {
 	for {
 		msg, err := sub.Next(s.ctx)
+
 		if err != nil {
 			log.Printf("Error receiving pubsub message: %v", err)
 			return
@@ -115,26 +119,34 @@ func (s *Service) handleOnlineAnnouncements(sub *pubsub.Subscription) {
 			continue
 		}
 
-		var announcement OnlineAnnouncement
-		if err := json.Unmarshal(msg.Data, &announcement); err != nil {
-			log.Printf("Error unmarshalling online announcement: %v", err)
+		bytes, _ := s.groupKeyStoreService.Decrypt(groupId, msg.Data)
+
+		var message types.GroupChatMessage
+		if err := json.Unmarshal(bytes, &message); err != nil {
+			log.Printf("Error unmarshalling message: %v", err)
 			continue
 		}
 
-		log.Printf("📢 Peer online announcement: %s (last message ID: %s)",
-			announcement.PeerID, announcement.LastMsgID)
+		sender := msg.GetFrom()
+
+		if sender.String() != message.SenderPeerId {
+			log.Printf("Matyvilebs vigac: %s != %s", message.SenderPeerId, sender.String())
+			continue
+		}
+
+		log.Printf("📢 MOVIDA: message - %s, dro - %s)", message.Message, message.Time)
 	}
 }
 
-// AnnounceOnline broadcasts that the current peer is online
-func (s *Service) announceOnline(lastMsgID string) error {
+// Publish publishes to topic
+func (s *Service) Publish(message []byte, topicName string) error {
 	for {
 		dht := s.appState.Dht
 		peerCount := len(dht.RoutingTable().ListPeers())
 
-		topic, ok := s.topics[OnlineAnnouncementTopic]
+		topic, ok := s.topics[topicName]
 		if !ok {
-			log.Printf("online announcement topic not joined")
+			log.Printf("online announcement topicName not joined")
 			continue
 		}
 		peers := topic.ListPeers()
@@ -145,29 +157,17 @@ func (s *Service) announceOnline(lastMsgID string) error {
 		time.Sleep(1 * time.Second)
 	}
 
-	topic, ok := s.topics[OnlineAnnouncementTopic]
+	topic, ok := s.topics[topicName]
 	if !ok {
-		return fmt.Errorf("online announcement topic not joined")
+		return fmt.Errorf("topicName not joined")
 	}
 
-	announcement := OnlineAnnouncement{
-		Type:      MsgTypeOnlineAnnouncement,
-		PeerID:    (*s.appState.Node).ID().String(),
-		Timestamp: time.Now(),
-		LastMsgID: lastMsgID,
-	}
-
-	data, err := json.Marshal(announcement)
+	err := topic.Publish(s.ctx, message)
 	if err != nil {
-		return fmt.Errorf("failed to marshal online announcement: %w", err)
+		return fmt.Errorf("failed to publish: %w", err)
 	}
 
-	err = topic.Publish(s.ctx, data)
-	if err != nil {
-		return fmt.Errorf("failed to publish online announcement: %w", err)
-	}
-
-	log.Printf("Published online announcement with last message ID: %s", lastMsgID)
+	log.Printf("Published message to topic: %s", topicName)
 	return nil
 }
 

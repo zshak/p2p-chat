@@ -63,3 +63,10 @@ type StoredGroupMessage struct {
 	EncryptedContent []byte
 	SentAt           time.Time
 }
+
+type GroupChatMessage struct {
+	Id           string
+	SenderPeerId string
+	Message      string
+	Time         time.Time
+}

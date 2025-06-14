@@ -36,3 +36,8 @@ type CreateGroupChatRequest struct {
 	MemberPeerIds []string `json:"member_peers"`
 	ChatName      string   `json:"name"`
 }
+
+type SendGroupChatMessageRequest struct {
+	Message string `json:"message"`
+	GroupId string `json:"group_id"`
+}

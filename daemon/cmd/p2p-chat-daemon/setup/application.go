@@ -87,12 +87,12 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		return nil, fmt.Errorf("failed to create key repository: %w", err)
 	}
 
-	pubsubService, err := pubsub.NewPubSubService(ctx, appState)
+	keyService := identity.NewGroupKeyStore(keyRepo, ctx)
+
+	pubsubService, err := pubsub.NewPubSubService(ctx, appState, keyService)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pubsub service: %w", err)
 	}
-
-	keyService := identity.NewGroupKeyStore(keyRepo, ctx)
 
 	profileHandle := profile.NewProtocolHandler(appState, eventbus, ctx, relationshipRepo)
 	chatHandler := chat.NewProtocolHandler(appState, eventbus, profileHandle, keyService, groupMemberRepo, keyRepo, pubsubService)

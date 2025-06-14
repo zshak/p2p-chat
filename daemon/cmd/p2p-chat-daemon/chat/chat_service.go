@@ -87,7 +87,7 @@ func (s *Service) startListeningToGroupChatMessages() {
 
 	for id, _ := range s.groupChats {
 		log.Printf("Starting to listen to group chat messages for topic %s", core.GroupChatTopic+id)
-		s.pubSubService.JoinTopic(core.GroupChatTopic + id)
+		s.pubSubService.JoinTopic(core.GroupChatTopic+id, id)
 	}
 }
 
@@ -337,7 +337,7 @@ func (s *Service) CreateGroup(peers []string, groupChatName string) error {
 	}
 
 	log.Printf("GROUP Chat API: joining topic: %s", core.GroupChatTopic+id)
-	err = s.pubSubService.JoinTopic(core.GroupChatTopic + id)
+	err = s.pubSubService.JoinTopic(core.GroupChatTopic+id, id)
 
 	if err != nil {
 		log.Printf("GROUP Chat API: Error joining topic: %v", err)
@@ -390,10 +390,36 @@ func (s *Service) handleGroupRequest(stream network.Stream) {
 
 	log.Printf("GROUP Chat API: joining topic: %s", core.GroupChatTopic+request.Id)
 
-	err = s.pubSubService.JoinTopic(core.GroupChatTopic + request.Id)
+	err = s.pubSubService.JoinTopic(core.GroupChatTopic+request.Id, request.Id)
 	if err != nil {
 		log.Printf("GROUP Chat API: Error joining topic: %v", err)
 	}
 
 	stream.Close()
+}
+
+func (s *Service) SendGroupMessage(groupId string, message string) error {
+	messageID, _ := uuid.NewRandom()
+
+	pubSubMessage := types.GroupChatMessage{
+		SenderPeerId: (*s.appState.Node).ID().String(),
+		Message:      message,
+		Time:         time.Now(),
+		Id:           messageID.String(),
+	}
+
+	pubSubMessageBytes, err := json.Marshal(pubSubMessage)
+	if err != nil {
+		return fmt.Errorf("failed to marshal message: %w", err)
+	}
+
+	encryptedMessage, err := s.groupKeyStoreService.Encrypt(groupId, pubSubMessageBytes)
+
+	if err != nil {
+		return fmt.Errorf("failed to encrypt message: %w", err)
+	}
+
+	s.pubSubService.Publish(encryptedMessage, core.GroupChatTopic+groupId)
+
+	return nil
 }
