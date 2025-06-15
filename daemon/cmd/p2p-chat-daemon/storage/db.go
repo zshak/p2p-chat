@@ -81,7 +81,7 @@ func (db *DB) ensureCreation() error {
 			sender_peer_id TEXT NOT NULL,
 			recipient_peer_id TEXT NOT NULL,
 			send_time TEXT NOT NULL,
-			content TEXT NOT NULL,  
+			content BLOB NOT NULL,  
 			is_outgoing BOOLEAN NOT NULL
 		);
 

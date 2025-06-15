@@ -13,11 +13,14 @@ import (
 // MessageRepository defines the operations for persisting chat messages.
 type MessageRepository interface {
 	// Store saves a new message to the database.
-	Store(ctx context.Context, msg types.ChatMessage) (id int64, err error)
+	Store(ctx context.Context, msg types.StoredMessage) (id int64, err error)
 
 	StoreGroupMessage(ctx context.Context, msg types.StoredGroupMessage) error
 
 	GetGroupMessages(ctx context.Context, groupID string, limit int, before time.Time) ([]types.StoredGroupMessage, error)
+
+	// GetMessagesByPeerID retrieves messages exchanged with a specific peer, ordered by timestamp
+	GetMessagesByPeerID(ctx context.Context, peerID string, limit int) ([]types.StoredMessage, error)
 }
 
 // --- SQLite Implementation ---
@@ -35,7 +38,7 @@ func NewSQLiteMessageRepository(database *DB) (MessageRepository, error) {
 }
 
 // Store saves a message, ensuring the conversation exists.
-func (r *sqliteMessageRepository) Store(ctx context.Context, msg types.ChatMessage) (int64, error) {
+func (r *sqliteMessageRepository) Store(ctx context.Context, msg types.StoredMessage) (int64, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to begin transaction: %w", err)
@@ -152,5 +155,74 @@ func (r *sqliteMessageRepository) GetGroupMessages(ctx context.Context, groupID 
 	}
 
 	log.Printf("Storage: Retrieved %d messages for group %s", len(messages), groupID)
+	return messages, nil
+}
+
+// GetMessagesByPeerID retrieves messages exchanged with a specific peer.
+// Returns messages ordered by timestamp ascending (oldest first).
+func (r *sqliteMessageRepository) GetMessagesByPeerID(ctx context.Context, peerID string, limit int) ([]types.StoredMessage, error) {
+	log.Printf("Storage: Retrieving messages for peer %s", peerID)
+
+	if peerID == "" {
+		return nil, errors.New("peerID cannot be empty")
+	}
+
+	if limit <= 0 {
+		limit = 50
+	}
+
+	// This query retrieves messages where:
+	// 1. The specified peer is either the sender or recipient
+	// 2. Orders by send_time in ascending order (oldest first)
+	// 3. Limits the number of results
+	querySQL := `
+		SELECT id, sender_peer_id, recipient_peer_id, send_time, content, is_outgoing
+		FROM messages
+		WHERE (recipient_peer_id = ? OR sender_peer_id = ?)
+		ORDER BY send_time ASC
+		LIMIT ?
+	`
+
+	rows, err := r.db.QueryContext(ctx, querySQL, peerID, peerID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query messages for peer %s: %w", peerID, err)
+	}
+	defer rows.Close()
+
+	var messages []types.StoredMessage
+	for rows.Next() {
+		var msg types.StoredMessage
+		var sendTimeStr string
+
+		err := rows.Scan(
+			&msg.ID,
+			&msg.SenderPeerID,
+			&msg.RecipientPeerId,
+			&sendTimeStr,
+			&msg.Content,
+			&msg.IsOutgoing,
+		)
+		if err != nil {
+			log.Printf("Storage: Error scanning message row for peer %s: %v", peerID, err)
+			continue
+		}
+
+		// Parse the send_time string into a time.Time
+		sendTime, err := time.Parse(time.RFC3339, sendTimeStr)
+		if err != nil {
+			log.Printf("Storage: Error parsing send_time for message %d: %v", msg.ID, err)
+			// Use current time as a fallback
+			sendTime = time.Now()
+		}
+		msg.SendTime = sendTime
+
+		messages = append(messages, msg)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating message rows for peer %s: %w", peerID, err)
+	}
+
+	log.Printf("Storage: Retrieved %d messages for peer %s", len(messages), peerID)
 	return messages, nil
 }

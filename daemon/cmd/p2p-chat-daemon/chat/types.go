@@ -18,3 +18,13 @@ type GroupChatMessage struct {
 	Message      string
 	Time         time.Time
 }
+
+type Messages struct {
+	Messages []Message
+}
+
+type Message struct {
+	SendTime   time.Time
+	Message    string
+	IsOutgoing bool
+}

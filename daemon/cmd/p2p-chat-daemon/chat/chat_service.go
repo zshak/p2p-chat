@@ -469,6 +469,39 @@ func (s *Service) GetGroupMessages(groupId string) (GroupChatMessages, error) {
 	return GroupChatMessages{Messages: groupChatMessages}, nil
 }
 
+func (s *Service) GetMessages(peerId string) (Messages, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	messages, err := s.messageRepository.GetMessagesByPeerID(ctx, peerId, 1000000)
+
+	if err != nil {
+		return Messages{}, err
+	}
+
+	groupChatMessages := make([]Message, 0)
+
+	for _, m := range messages {
+		decryptedMessage, err := crypto_utils.DecryptDataWithKey(
+			s.appState.DbKey,
+			m.Content,
+			core.DefaultCryptoConfig,
+		)
+
+		if err != nil {
+			log.Printf("Error decrypting message: %v", err)
+			continue
+		}
+
+		groupChatMessages = append(groupChatMessages, Message{
+			SendTime:   m.SendTime,
+			Message:    string(decryptedMessage),
+			IsOutgoing: m.IsOutgoing,
+		})
+	}
+	return Messages{Messages: groupChatMessages}, nil
+}
+
 func (s *Service) GetGroups() ([]storage.GroupInfo, error) {
 	groups, err := s.groupMemberRepo.GetGroups(context.Background())
 

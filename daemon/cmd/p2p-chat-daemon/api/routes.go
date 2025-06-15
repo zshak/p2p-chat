@@ -12,6 +12,7 @@ func setupRoutes(mux *http.ServeMux, handler *ApiHandler) {
 	mux.HandleFunc("/setup/unlock-key", handler.handleUnlockKey)
 
 	mux.HandleFunc("/chat/send", handler.handleSendMessage)
+	mux.HandleFunc("/chat/messages", handler.handleGetMessages)
 
 	mux.HandleFunc("/profile/friend/request", handler.handleFriendRequest)
 	mux.HandleFunc("/profile/friend/response", handler.handleFriendRequestResponse)

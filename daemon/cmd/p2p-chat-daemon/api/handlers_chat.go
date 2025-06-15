@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -38,4 +39,35 @@ func (h *ApiHandler) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	// --- Send Success Response ---
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Message sent successfully")
+}
+
+// handleGetMessages handles GET requests to /chat/messages
+func (h *ApiHandler) handleGetMessages(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Decode request body
+	var req GetChatMessagesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	messages, err := h.chatService.GetMessages(req.PeerId)
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error getting message: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	responseBytes, err := json.Marshal(messages)
+	if err != nil {
+		log.Printf("API Handler: Error marshalling chat messages to JSON: %v", err)
+		http.Error(w, "Failed to prepare chat messages response", http.StatusInternalServerError)
+	}
+
+	// --- Send Success Response ---
+	w.Write(responseBytes)
 }
