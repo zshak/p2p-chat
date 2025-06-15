@@ -81,7 +81,7 @@ func (h *ApiHandler) handleUnlockKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Attempt to load and decrypt
-	privKey, err := identity.LoadAndDecryptKey(keyPath, []byte(req.Password))
+	privKey, dbKey, err := identity.LoadAndDecryptKey(keyPath, []byte(req.Password))
 	if err != nil {
 		h.eventBus.PublishAsync(events.KeyLoadingFailedEvent{Err: err})
 		http.Error(w, fmt.Sprintf("Failed to unlock key: %v", err), http.StatusUnauthorized)
@@ -89,7 +89,7 @@ func (h *ApiHandler) handleUnlockKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Key unlocked successfully
-	h.eventBus.PublishAsync(events.UserAuthenticatedEvent{Key: privKey})
+	h.eventBus.PublishAsync(events.UserAuthenticatedEvent{Key: privKey, DbKey: dbKey})
 
 	log.Printf("API: Key unlocked successfully.")
 	w.WriteHeader(http.StatusOK)

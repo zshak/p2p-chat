@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	// Import necessary libp2p types ONLY here
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -13,9 +14,15 @@ import (
 type DaemonState int
 
 const (
+	GroupChatProtocolID      = "/p2p-chat-daemon/group-chat/1.0.0"
 	ChatProtocolID           = "/p2p-chat-daemon/chat/1.0.0"
 	FriendRequestProtocolID  = "/p2p-chat-daemon/friend-request/1.0.0"
 	FriendResponseProtocolID = "/p2p-chat-daemon/friend-response/1.0.0"
+	OnlineAnnouncementTopic  = "p2p-chat/online-announcements"
+)
+
+const (
+	GroupChatTopic = "/p2p-chat-daemon/group-chat/1.0.0/"
 )
 
 const (
@@ -56,8 +63,10 @@ type AppState struct {
 	State        DaemonState
 	Node         *host.Host
 	Dht          *dht.IpfsDHT
+	PubSub       *pubsub.PubSub // Added PubSub field
 	KeyPath      string
 	PrivKey      crypto.PrivKey
+	DbKey        []byte
 	LastError    error
 	KeyReadyChan chan struct{}
 }

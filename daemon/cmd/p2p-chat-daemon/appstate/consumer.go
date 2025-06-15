@@ -69,12 +69,12 @@ func (c *Consumer) handleEvent(event interface{}) {
 
 	case events.KeyGeneratedEvent:
 		log.Println("Key Generated Successfully")
-		c.handleKeyProvided(event.Key)
+		c.handleKeyProvided(event.Key, nil)
 		return
 
 	case events.UserAuthenticatedEvent:
 		log.Println("Key Loaded Successfully")
-		c.handleKeyProvided(event.Key)
+		c.handleKeyProvided(event.Key, event.DbKey)
 		return
 
 	case events.ApiStartedEvent:
@@ -106,11 +106,15 @@ func (c *Consumer) updateState(state core.DaemonState, err error) {
 	}
 }
 
-func (c *Consumer) handleKeyProvided(key crypto.PrivKey) {
+func (c *Consumer) handleKeyProvided(key crypto.PrivKey, dbKey []byte) {
 	c.appState.Mu.Lock()
 	defer c.appState.Mu.Unlock()
 
 	c.appState.PrivKey = key
+
+	if dbKey != nil {
+		c.appState.DbKey = dbKey
+	}
 }
 
 func (c *Consumer) handleApiStarted() {

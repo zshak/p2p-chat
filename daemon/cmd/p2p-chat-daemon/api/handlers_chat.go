@@ -14,17 +14,21 @@ func (h *ApiHandler) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Decode request body
-	var req ChatMessageRequest
+	var req MessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
 		return
 	}
-	if req.TargetPeerID == "" || req.Message == "" {
+
+	var request WsDirectMessageRequestPayload
+	json.Unmarshal(req.Payload, &request)
+
+	if request.TargetPeerID == "" || request.Message == "" {
 		http.Error(w, "Missing 'target_peer_id' or 'message' in request", http.StatusBadRequest)
 		return
 	}
 
-	err := h.chatService.SendMessage(req.TargetPeerID, req.Message)
+	err := h.chatService.SendMessage(request.TargetPeerID, request.Message)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error sending message: %v", err), http.StatusInternalServerError)

@@ -24,7 +24,8 @@ type KeyGeneratedEvent struct {
 }
 
 type UserAuthenticatedEvent struct {
-	Key crypto.PrivKey
+	Key   crypto.PrivKey
+	DbKey []byte
 }
 
 type ApiStartedEvent struct {
@@ -52,6 +53,20 @@ type MessageReceivedEvent struct {
 	Message types.ChatMessage
 }
 
+type GroupChatMessageReceivedEvent struct {
+	Message GroupChatMessage
+}
+
+type GroupChatMessageSentEvent struct {
+	Message GroupChatMessage
+}
+
+type GroupChatMessage struct {
+	GroupId      string
+	SenderPeerId string
+	Message      string
+	Time         time.Time
+}
 type FriendRequestReceived struct {
 	FriendRequest types.FriendRequestData
 }
@@ -70,4 +85,11 @@ type FriendRequestSentEvent struct {
 type FriendResponseSentEvent struct {
 	PeerId     string
 	IsAccepted bool
+}
+
+type FriendOnlineStatusChangedEvent struct {
+	PeerID   string
+	IsOnline bool
+	LastSeen time.Time
+	RTT      time.Duration
 }

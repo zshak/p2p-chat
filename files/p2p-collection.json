@@ -291,6 +291,159 @@
         }
       },
       "response": []
+    },
+    {
+      "name": "create group chat",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"password\": \"crazy2\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://127.0.0.1:59579/setup/unlock-key",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "59579",
+          "path": [
+            "setup",
+            "unlock-key"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "send group chat message",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"group_id\": \"f0385852-06e0-406d-be6c-f3d80ede6d91\",\n    \"message\": \"=================CRAZY2222==================\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://127.0.0.1:59578/group-chat/send",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "59578",
+          "path": [
+            "group-chat",
+            "send"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "get group chat messages",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"group_id\" : \"03ebaf95-6208-4b34-937e-51749cc7a293\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://127.0.0.1:59578/group-chat/messages",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "59578",
+          "path": [
+            "group-chat",
+            "messages"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "get group chats",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"group_id\" : \"03ebaf95-6208-4b34-937e-51749cc7a293\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://127.0.0.1:59578/group-chats",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "59578",
+          "path": [
+            "group-chats"
+          ]
+        }
+      },
+      "response": []
     }
   ]
 }
