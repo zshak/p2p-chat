@@ -34,7 +34,7 @@ func (h *ApiHandler) handleCreateGroupChat(w http.ResponseWriter, r *http.Reques
 }
 
 // handleCreateGroupChat handles POST requests to /group-chat
-func (h *ApiHandler) handelSendGroupMessage(w http.ResponseWriter, r *http.Request) {
+func (h *ApiHandler) handleSendGroupMessage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -57,4 +57,35 @@ func (h *ApiHandler) handelSendGroupMessage(w http.ResponseWriter, r *http.Reque
 	// --- Send Success Response ---
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Group chat message sent successfully")
+}
+
+func (h *ApiHandler) handleGetGroupMessages(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Decode request body
+	var req GetGroupChatMessagesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	messages, err := h.chatService.GetGroupMessages(req.GroupId)
+
+	if err != nil {
+		log.Printf("API Handler: Error getting group chat messages: %v", err)
+		http.Error(w, fmt.Sprintf("Error getting group chat messages: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	responseBytes, err := json.Marshal(messages)
+	if err != nil {
+		log.Printf("API Handler: Error marshalling group chat messages to JSON: %v", err)
+		http.Error(w, "Failed to prepare group chat messages response", http.StatusInternalServerError)
+	}
+
+	// --- Send Success Response -
+	w.Write(responseBytes)
 }

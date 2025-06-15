@@ -16,6 +16,8 @@ type MessageRepository interface {
 	Store(ctx context.Context, msg types.ChatMessage) (id int64, err error)
 
 	StoreGroupMessage(ctx context.Context, msg types.StoredGroupMessage) error
+
+	GetGroupMessages(ctx context.Context, groupID string, limit int, before time.Time) ([]types.StoredGroupMessage, error)
 }
 
 // --- SQLite Implementation ---

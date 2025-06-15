@@ -95,10 +95,27 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	}
 
 	profileHandle := profile.NewProtocolHandler(appState, eventbus, ctx, relationshipRepo)
-	chatHandler := chat.NewProtocolHandler(appState, eventbus, profileHandle, keyService, groupMemberRepo, keyRepo, pubsubService)
+
+	chatHandler := chat.NewProtocolHandler(
+		appState,
+		eventbus,
+		profileHandle,
+		keyService,
+		groupMemberRepo,
+		keyRepo,
+		pubsubService,
+		msgRepo,
+	)
 	connectionService := connection.NewConnectionService(ctx, appState, relationshipRepo, eventbus)
 
-	_, server, handler, err := uiapi.StartAPIServer(ctx, cfg.API.ListenAddr, appState, eventbus, chatHandler, profileHandle)
+	_, server, handler, err := uiapi.StartAPIServer(
+		ctx,
+		cfg.API.ListenAddr,
+		appState,
+		eventbus,
+		chatHandler,
+		profileHandle,
+	)
 	eventbus.PublishAsync(events.ApiStartedEvent{})
 
 	apiConsumer := uiapi.NewConsumer(eventbus, handler, ctx)

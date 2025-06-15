@@ -17,6 +17,7 @@ import (
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/identity"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/crypto_utils"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/profile"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/pubsub"
@@ -34,6 +35,7 @@ type Service struct {
 	groupKeyStoreService *identity.GroupKeyStore
 	groupMemberRepo      storage.GroupMemberRepository
 	KeyRepository        storage.KeyRepository
+	messageRepository    storage.MessageRepository
 	pubSubService        *pubsub.Service
 	groupChats           map[string][]string
 	mu                   sync.Mutex
@@ -47,7 +49,8 @@ func NewProtocolHandler(
 	groupKeyStore *identity.GroupKeyStore,
 	groupMemberRepo storage.GroupMemberRepository,
 	keyRepo storage.KeyRepository,
-	pubSubService *pubsub.Service) *Service {
+	pubSubService *pubsub.Service,
+	messageRepo storage.MessageRepository) *Service {
 
 	return &Service{
 		appState:             app,
@@ -57,6 +60,7 @@ func NewProtocolHandler(
 		groupMemberRepo:      groupMemberRepo,
 		KeyRepository:        keyRepo,
 		pubSubService:        pubSubService,
+		messageRepository:    messageRepo,
 	}
 }
 
@@ -430,4 +434,37 @@ func (s *Service) SendGroupMessage(groupId string, message string) error {
 	s.bus.PublishAsync(events.GroupChatMessageSentEvent{Message: mes})
 
 	return nil
+}
+
+func (s *Service) GetGroupMessages(groupId string) (GroupChatMessages, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	messages, err := s.messageRepository.GetGroupMessages(ctx, groupId, 1000000, time.Now())
+
+	if err != nil {
+		return GroupChatMessages{}, err
+	}
+
+	groupChatMessages := make([]GroupChatMessage, 0)
+
+	for _, m := range messages {
+		decryptedMessage, err := crypto_utils.DecryptDataWithKey(
+			s.appState.DbKey,
+			m.EncryptedContent,
+			core.DefaultCryptoConfig,
+		)
+
+		if err != nil {
+			log.Printf("Error decrypting message: %v", err)
+			continue
+		}
+
+		groupChatMessages = append(groupChatMessages, GroupChatMessage{
+			SenderPeerId: m.SenderPeerID,
+			Time:         m.SentAt,
+			Message:      string(decryptedMessage),
+		})
+	}
+	return GroupChatMessages{Messages: groupChatMessages}, nil
 }
