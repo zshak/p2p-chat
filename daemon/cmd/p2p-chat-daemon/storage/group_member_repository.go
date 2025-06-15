@@ -10,8 +10,15 @@ import (
 
 // GroupMemberRepository defines operations for managing group memberships.
 type GroupMemberRepository interface {
-	AddMembers(ctx context.Context, groupID string, peerIDs []string) error // New method
+	AddMembers(ctx context.Context, groupID string, peerIDs []string) error
 	GetGroupsWithMembers(ctx context.Context) (map[string][]string, error)
+	GetGroups(ctx context.Context) ([]GroupInfo, error)
+}
+
+// GroupInfo represents a group with its members
+type GroupInfo struct {
+	GroupID string   `json:"group_id"`
+	Members []string `json:"members"`
 }
 
 // --- SQLite Implementation ---
@@ -110,4 +117,25 @@ func (r *sqliteGroupMemberRepository) GetGroupsWithMembers(ctx context.Context) 
 	}
 
 	return result, nil
+}
+
+// GetGroups returns a list of GroupInfo objects containing group IDs and their members
+func (r *sqliteGroupMemberRepository) GetGroups(ctx context.Context) ([]GroupInfo, error) {
+	// Get the map of groups with their members
+	groupsMap, err := r.GetGroupsWithMembers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get groups with members: %w", err)
+	}
+
+	// Convert the map to a slice of GroupInfo
+	var groups []GroupInfo
+	for groupID, members := range groupsMap {
+		groups = append(groups, GroupInfo{
+			GroupID: groupID,
+			Members: members,
+		})
+	}
+
+	log.Printf("Storage: Retrieved %d groups", len(groups))
+	return groups, nil
 }

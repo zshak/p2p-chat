@@ -89,3 +89,27 @@ func (h *ApiHandler) handleGetGroupMessages(w http.ResponseWriter, r *http.Reque
 	// --- Send Success Response -
 	w.Write(responseBytes)
 }
+
+func (h *ApiHandler) handleGetGroups(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	groups, err := h.chatService.GetGroups()
+
+	if err != nil {
+		log.Printf("API Handler: Error getting group chats: %v", err)
+		http.Error(w, fmt.Sprintf("Error getting group chats: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	responseBytes, err := json.Marshal(groups)
+	if err != nil {
+		log.Printf("API Handler: Error marshalling group chats to JSON: %v", err)
+		http.Error(w, "Failed to prepare group chats response", http.StatusInternalServerError)
+	}
+
+	// --- Send Success Response -
+	w.Write(responseBytes)
+}

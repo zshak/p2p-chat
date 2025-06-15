@@ -468,3 +468,13 @@ func (s *Service) GetGroupMessages(groupId string) (GroupChatMessages, error) {
 	}
 	return GroupChatMessages{Messages: groupChatMessages}, nil
 }
+
+func (s *Service) GetGroups() ([]storage.GroupInfo, error) {
+	groups, err := s.groupMemberRepo.GetGroups(context.Background())
+
+	if err != nil {
+		return nil, err
+	}
+
+	return groups, nil
+}

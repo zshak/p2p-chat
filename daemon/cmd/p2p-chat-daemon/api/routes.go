@@ -18,6 +18,7 @@ func setupRoutes(mux *http.ServeMux, handler *ApiHandler) {
 	mux.HandleFunc("/profile/friends", handler.handleGetFriends)
 
 	mux.HandleFunc("/group-chat", handler.handleCreateGroupChat)
+	mux.HandleFunc("/group-chats", handler.handleGetGroups)
 	mux.HandleFunc("/group-chat/send", handler.handleSendGroupMessage)
 	mux.HandleFunc("/group-chat/messages", handler.handleGetGroupMessages)
 
