@@ -62,6 +62,10 @@ type GetGroupChatMessagesRequest struct {
 	GroupId string `json:"group_id"`
 }
 
+type GetChatMessagesRequest struct {
+	PeerId string `json:"peer_id"`
+}
+
 type WsMessageType string
 
 const (

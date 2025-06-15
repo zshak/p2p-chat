@@ -88,7 +88,20 @@ func (c *Consumer) SaveMessage(message types.ChatMessage) {
 	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second) // Short timeout for DB operation
 	defer cancel()
 
-	id, err := c.chatRepo.Store(storeCtx, message)
+	encryptedMessage, err := crypto_utils.EncryptDataWithKey(c.appState.DbKey, []byte(message.Content), core.DefaultCryptoConfig)
+
+	if err != nil {
+		log.Printf("Chat Consumer: ERROR - Failed to encrypt message: %v", err)
+		return
+	}
+
+	id, err := c.chatRepo.Store(storeCtx, types.StoredMessage{
+		SenderPeerID:    message.SenderPeerID,
+		RecipientPeerId: message.RecipientPeerId,
+		Content:         encryptedMessage,
+		SendTime:        message.SendTime,
+		IsOutgoing:      message.IsOutgoing,
+	})
 	if err != nil {
 		log.Printf("Chat Consumer: ERROR - Failed to store sent message (ID tentative %d) to %s: %v", id, message.RecipientPeerId, err)
 	} else {
@@ -105,7 +118,6 @@ func (c *Consumer) handleGroupChatMessageSentEvent(message events.GroupChatMessa
 }
 
 func (c *Consumer) SaveGroupChatMessage(event events.GroupChatMessage) {
-	log.Printf("OEEEEEEEEEEEEE")
 	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second) // Short timeout for DB operation
 	defer cancel()
 
