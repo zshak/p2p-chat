@@ -1,449 +1,489 @@
 {
-  "info": {
-    "_postman_id": "22966356-851b-4e1a-8740-44d24461646e",
-    "name": "p2p-chat",
-    "description": "rest endpoints for p2p chat",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "36399508"
-  },
-  "item": [
-    {
-      "name": "enter password 1",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n    \"password\": \"crazy\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "http://127.0.0.1:59578/setup/unlock-key",
-          "protocol": "http",
-          "host": [
-            "127",
-            "0",
-            "0",
-            "1"
-          ],
-          "port": "59578",
-          "path": [
-            "setup",
-            "unlock-key"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "enter password 2",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n    \"password\": \"crazy2\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "http://127.0.0.1:59579/setup/unlock-key",
-          "protocol": "http",
-          "host": [
-            "127",
-            "0",
-            "0",
-            "1"
-          ],
-          "port": "59579",
-          "path": [
-            "setup",
-            "unlock-key"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "create key",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n    \"password\": \"crazy2\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "http://127.0.0.1:59579/setup/create-key",
-          "protocol": "http",
-          "host": [
-            "127",
-            "0",
-            "0",
-            "1"
-          ],
-          "port": "59579",
-          "path": [
-            "setup",
-            "create-key"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "send message",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n    \"target_peer_id\": \"12D3KooWCvSxbpi2y6nx3QbnjBovxi1LP3MvvZ5eGqezuGty8iUg\",\n    \"message\": \"=================CRAZY==================\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "http://127.0.0.1:59578/chat/send",
-          "protocol": "http",
-          "host": [
-            "127",
-            "0",
-            "0",
-            "1"
-          ],
-          "port": "59578",
-          "path": [
-            "chat",
-            "send"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "friend request",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n    \"receiver_peer_id\": \"12D3KooWCvSxbpi2y6nx3QbnjBovxi1LP3MvvZ5eGqezuGty8iUg\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "http://127.0.0.1:59578/profile/friend",
-          "protocol": "http",
-          "host": [
-            "127",
-            "0",
-            "0",
-            "1"
-          ],
-          "port": "59578",
-          "path": [
-            "profile",
-            "friend"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "friend response",
-      "request": {
-        "method": "PATCH",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n    \"peer_id\": \"12D3KooWHCJUPba5doubCfLFeX55FYSBbkPGZN486HRYNPUSuKYm\",\n    \"is_accepted\": true\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "http://127.0.0.1:59579/profile/friend/response",
-          "protocol": "http",
-          "host": [
-            "127",
-            "0",
-            "0",
-            "1"
-          ],
-          "port": "59579",
-          "path": [
-            "profile",
-            "friend",
-            "response"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "Status",
-      "protocolProfileBehavior": {
-        "disableBodyPruning": true
-      },
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "http://127.0.0.1:59579/status",
-          "protocol": "http",
-          "host": [
-            "127",
-            "0",
-            "0",
-            "1"
-          ],
-          "port": "59579",
-          "path": [
-            "status"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "Get Friends :(",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "http://127.0.0.1:59579/profile/friends",
-          "protocol": "http",
-          "host": [
-            "127",
-            "0",
-            "0",
-            "1"
-          ],
-          "port": "59579",
-          "path": [
-            "profile",
-            "friends"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "create group chat",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n    \"password\": \"crazy2\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "http://127.0.0.1:59579/setup/unlock-key",
-          "protocol": "http",
-          "host": [
-            "127",
-            "0",
-            "0",
-            "1"
-          ],
-          "port": "59579",
-          "path": [
-            "setup",
-            "unlock-key"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "send group chat message",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n    \"group_id\": \"f0385852-06e0-406d-be6c-f3d80ede6d91\",\n    \"message\": \"=================CRAZY2222==================\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "http://127.0.0.1:59578/group-chat/send",
-          "protocol": "http",
-          "host": [
-            "127",
-            "0",
-            "0",
-            "1"
-          ],
-          "port": "59578",
-          "path": [
-            "group-chat",
-            "send"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "get group chat messages",
-      "protocolProfileBehavior": {
-        "disableBodyPruning": true
-      },
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n    \"group_id\" : \"03ebaf95-6208-4b34-937e-51749cc7a293\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "http://127.0.0.1:59578/group-chat/messages",
-          "protocol": "http",
-          "host": [
-            "127",
-            "0",
-            "0",
-            "1"
-          ],
-          "port": "59578",
-          "path": [
-            "group-chat",
-            "messages"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "get group chats",
-      "protocolProfileBehavior": {
-        "disableBodyPruning": true
-      },
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n    \"group_id\" : \"03ebaf95-6208-4b34-937e-51749cc7a293\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "http://127.0.0.1:59578/group-chats",
-          "protocol": "http",
-          "host": [
-            "127",
-            "0",
-            "0",
-            "1"
-          ],
-          "port": "59578",
-          "path": [
-            "group-chats"
-          ]
-        }
-      },
-      "response": []
-    }
-  ]
+	"info": {
+		"_postman_id": "22966356-851b-4e1a-8740-44d24461646e",
+		"name": "p2p-chat",
+		"description": "rest endpoints for p2p chat",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36399508"
+	},
+	"item": [
+		{
+			"name": "enter password 1",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"password\": \"crazy\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:59578/setup/unlock-key",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "59578",
+					"path": [
+						"setup",
+						"unlock-key"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "enter password 2",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"password\": \"crazy2\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:59579/setup/unlock-key",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "59579",
+					"path": [
+						"setup",
+						"unlock-key"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "create key",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"password\": \"crazy2\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:59579/setup/create-key",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "59579",
+					"path": [
+						"setup",
+						"create-key"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "send message",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"target_peer_id\": \"12D3KooWCvSxbpi2y6nx3QbnjBovxi1LP3MvvZ5eGqezuGty8iUg\",\n    \"message\": \"=================CRAZY==================\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:59578/chat/send",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "59578",
+					"path": [
+						"chat",
+						"send"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "friend request",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"receiver_peer_id\": \"12D3KooWCvSxbpi2y6nx3QbnjBovxi1LP3MvvZ5eGqezuGty8iUg\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:59578/profile/friend",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "59578",
+					"path": [
+						"profile",
+						"friend"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "friend response",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"peer_id\": \"12D3KooWHCJUPba5doubCfLFeX55FYSBbkPGZN486HRYNPUSuKYm\",\n    \"is_accepted\": true\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:59579/profile/friend/response",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "59579",
+					"path": [
+						"profile",
+						"friend",
+						"response"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Status",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:59579/status",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "59579",
+					"path": [
+						"status"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Friends :(",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:59579/profile/friends",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "59579",
+					"path": [
+						"profile",
+						"friends"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "create group chat",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"password\": \"crazy2\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:59579/setup/unlock-key",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "59579",
+					"path": [
+						"setup",
+						"unlock-key"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "send group chat message",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"group_id\": \"f0385852-06e0-406d-be6c-f3d80ede6d91\",\n    \"message\": \"=================CRAZY2222==================\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:59578/group-chat/send",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "59578",
+					"path": [
+						"group-chat",
+						"send"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get group chat messages",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"group_id\" : \"03ebaf95-6208-4b34-937e-51749cc7a293\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:59578/group-chat/messages",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "59578",
+					"path": [
+						"group-chat",
+						"messages"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get group chats",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"group_id\" : \"03ebaf95-6208-4b34-937e-51749cc7a293\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:59578/group-chats",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "59578",
+					"path": [
+						"group-chats"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get chat messages",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"peer_id\" : \"12D3KooWCvSxbpi2y6nx3QbnjBovxi1LP3MvvZ5eGqezuGty8iUg\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:59578/chat/messages",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "59578",
+					"path": [
+						"chat",
+						"messages"
+					]
+				}
+			},
+			"response": []
+		}
+	]
 }
