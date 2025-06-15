@@ -7,6 +7,7 @@ import (
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/core/types"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/crypto_utils"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/storage"
 	"time"
@@ -31,6 +32,8 @@ func (c *Consumer) Start() {
 	log.Println("chat consumer started")
 	c.bus.Subscribe(c.eventsChan, events.MessageSentEvent{})
 	c.bus.Subscribe(c.eventsChan, events.MessageReceivedEvent{})
+	c.bus.Subscribe(c.eventsChan, events.GroupChatMessageReceivedEvent{})
+	c.bus.Subscribe(c.eventsChan, events.GroupChatMessageSentEvent{})
 
 	go c.listen()
 }
@@ -60,6 +63,16 @@ func (c *Consumer) handleEvent(event interface{}) {
 		log.Println("received message received event")
 		c.handleMessageReceived(event.Message)
 		return
+
+	case events.GroupChatMessageReceivedEvent:
+		log.Println("received group chat message received event")
+		c.handleGroupChatMessageReceivedEvent(event.Message)
+		return
+
+	case events.GroupChatMessageSentEvent:
+		log.Println("received group chat message received event")
+		c.handleGroupChatMessageSentEvent(event.Message)
+		return
 	}
 }
 
@@ -80,5 +93,39 @@ func (c *Consumer) SaveMessage(message types.ChatMessage) {
 		log.Printf("Chat Consumer: ERROR - Failed to store sent message (ID tentative %d) to %s: %v", id, message.RecipientPeerId, err)
 	} else {
 		log.Printf("Chat Consumer: Successfully stored sent message with DB ID %d to %s", id, message.RecipientPeerId)
+	}
+}
+
+func (c *Consumer) handleGroupChatMessageReceivedEvent(event events.GroupChatMessage) {
+	c.SaveGroupChatMessage(event)
+}
+
+func (c *Consumer) handleGroupChatMessageSentEvent(message events.GroupChatMessage) {
+	c.SaveGroupChatMessage(message)
+}
+
+func (c *Consumer) SaveGroupChatMessage(event events.GroupChatMessage) {
+	log.Printf("OEEEEEEEEEEEEE")
+	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second) // Short timeout for DB operation
+	defer cancel()
+
+	encryptedMesasge, err := crypto_utils.EncryptDataWithKey(c.appState.DbKey, []byte(event.Message), core.DefaultCryptoConfig)
+
+	if err != nil {
+		log.Printf("Chat Consumer: ERROR - Failed to encrypt group chat message: %v", err)
+		return
+	}
+
+	msg := types.StoredGroupMessage{
+		GroupID:          event.GroupId,
+		SenderPeerID:     event.SenderPeerId,
+		EncryptedContent: encryptedMesasge,
+		SentAt:           time.Now(),
+	}
+	err = c.chatRepo.StoreGroupMessage(storeCtx, msg)
+
+	if err != nil {
+		log.Printf("Chat Consumer: ERROR - Failed to store group chat message: %v", err)
+		return
 	}
 }

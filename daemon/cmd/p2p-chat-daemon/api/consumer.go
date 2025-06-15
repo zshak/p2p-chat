@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"log"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/core/types"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
 )
@@ -26,6 +28,7 @@ func NewConsumer(eventBus *bus.EventBus, handler *ApiHandler, ctx context.Contex
 func (c *Consumer) Start() {
 	log.Println("api consumer started")
 	c.bus.Subscribe(c.eventsChan, events.MessageReceivedEvent{})
+	c.bus.Subscribe(c.eventsChan, events.GroupChatMessageReceivedEvent{})
 
 	go c.listen()
 }
@@ -47,8 +50,57 @@ func (c *Consumer) handleEvent(event interface{}) {
 	switch ev := event.(type) {
 
 	case events.MessageReceivedEvent:
-		log.Println("CONSUMER: received message received event")
-		c.apiHandler.send(ev.Message.Content)
+		c.HandleMessageReceived(ev.Message)
+		return
+
+	case events.GroupChatMessageReceivedEvent:
+		c.HandleGroupMessageReceived(ev.Message)
 		return
 	}
+}
+
+func (c *Consumer) HandleMessageReceived(message types.ChatMessage) {
+	log.Println("CONSUMER: received message received event")
+	wsMsg := WsMessage{
+		Type: WsMsgTypeDirectMessage,
+	}
+
+	payload := WsDirectMessagePayload{SenderPeerId: message.SenderPeerID, Message: message.Content}
+	payloadBytes, err := json.Marshal(payload)
+
+	if err != nil {
+		log.Printf("ERROR: Failed to marshal payload: %v", err)
+		return
+	}
+
+	wsMsg.Payload = payloadBytes
+
+	wsMsgBytes, err := json.Marshal(wsMsg)
+
+	c.apiHandler.send(wsMsgBytes)
+}
+
+func (c *Consumer) HandleGroupMessageReceived(message events.GroupChatMessage) {
+	log.Println("CONSUMER: received group message received event")
+	wsMsg := WsMessage{
+		Type: WsMsgTypeGroupMessage,
+	}
+
+	payload := WsGroupMessagePayload{
+		SenderPeerId: message.SenderPeerId,
+		Message:      message.Message,
+		GroupId:      message.GroupId,
+	}
+	payloadBytes, err := json.Marshal(payload)
+
+	if err != nil {
+		log.Printf("ERROR: Failed to marshal payload: %v", err)
+		return
+	}
+
+	wsMsg.Payload = payloadBytes
+
+	wsMsgBytes, err := json.Marshal(wsMsg)
+
+	c.apiHandler.send(wsMsgBytes)
 }

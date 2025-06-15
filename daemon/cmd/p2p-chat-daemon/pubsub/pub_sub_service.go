@@ -7,6 +7,8 @@ import (
 	"log"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/core/types"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/identity"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/events"
 	"time"
 
 	"github.com/libp2p/go-libp2p-pubsub"
@@ -37,16 +39,23 @@ type Service struct {
 	topics               map[string]*pubsub.Topic
 	subs                 map[string]*pubsub.Subscription
 	groupKeyStoreService *identity.GroupKeyStore
+	eventBus             *bus.EventBus
 }
 
 // NewPubSubService creates a new pubsub service
-func NewPubSubService(ctx context.Context, appState *core.AppState, groupKeyStoreService *identity.GroupKeyStore) (*Service, error) {
+func NewPubSubService(
+	bus *bus.EventBus,
+	ctx context.Context,
+	appState *core.AppState,
+	groupKeyStoreService *identity.GroupKeyStore,
+) (*Service, error) {
 	return &Service{
 		ctx:                  ctx,
 		appState:             appState,
 		topics:               make(map[string]*pubsub.Topic),
 		subs:                 make(map[string]*pubsub.Subscription),
 		groupKeyStoreService: groupKeyStoreService,
+		eventBus:             bus,
 	}, nil
 }
 
@@ -134,7 +143,15 @@ func (s *Service) handleIncomingMessages(sub *pubsub.Subscription, groupId strin
 			continue
 		}
 
-		log.Printf("📢 MOVIDA: message - %s, dro - %s)", message.Message, message.Time)
+		log.Printf("📢📢📢📢📢 MOVIDA: message - %s, dro - %s) 📢📢📢📢📢", message.Message, message.Time)
+
+		mes := events.GroupChatMessage{
+			GroupId:      groupId,
+			Message:      message.Message,
+			SenderPeerId: (*s.appState.Node).ID().String(),
+			Time:         time.Now(),
+		}
+		s.eventBus.PublishAsync(events.GroupChatMessageReceivedEvent{Message: mes})
 	}
 }
 
@@ -144,14 +161,13 @@ func (s *Service) Publish(message []byte, topicName string) error {
 		dht := s.appState.Dht
 		peerCount := len(dht.RoutingTable().ListPeers())
 
-		topic, ok := s.topics[topicName]
+		_, ok := s.topics[topicName]
 		if !ok {
 			log.Printf("online announcement topicName not joined")
 			continue
 		}
-		peers := topic.ListPeers()
 
-		if peerCount > 1 && len(peers) > 0 {
+		if peerCount > 1 {
 			break
 		}
 		time.Sleep(1 * time.Second)
@@ -163,6 +179,7 @@ func (s *Service) Publish(message []byte, topicName string) error {
 	}
 
 	err := topic.Publish(s.ctx, message)
+
 	if err != nil {
 		return fmt.Errorf("failed to publish: %w", err)
 	}

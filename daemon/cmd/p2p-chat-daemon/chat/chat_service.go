@@ -421,5 +421,13 @@ func (s *Service) SendGroupMessage(groupId string, message string) error {
 
 	s.pubSubService.Publish(encryptedMessage, core.GroupChatTopic+groupId)
 
+	mes := events.GroupChatMessage{
+		GroupId:      groupId,
+		Message:      message,
+		SenderPeerId: (*s.appState.Node).ID().String(),
+		Time:         time.Now(),
+	}
+	s.bus.PublishAsync(events.GroupChatMessageSentEvent{Message: mes})
+
 	return nil
 }

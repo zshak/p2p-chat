@@ -1,5 +1,9 @@
 package api
 
+import (
+	"encoding/json"
+)
+
 // Contains API request/response struct definitions
 
 // StatusResponse represents the data returned by the /status endpoint.
@@ -15,10 +19,22 @@ type SetupRequest struct {
 	Password string `json:"password"`
 }
 
-// ChatMessageRequest defines the structure for sending a chat message via the API.
-type ChatMessageRequest struct {
+// MessageRequest defines the structure for sending a chat message via the API.
+type MessageRequest struct {
+	Payload json.RawMessage `json:"payload"`
+	Type    WsMessageType   `json:"type"`
+}
+
+// WsDirectMessageRequestPayload for when a new direct message is sent
+type WsDirectMessageRequestPayload struct {
 	TargetPeerID string `json:"target_peer_id"`
 	Message      string `json:"message"`
+}
+
+// WsGroupMessageRequestPayload for when a new group message is sent
+type WsGroupMessageRequestPayload struct {
+	GroupId string `json:"group_id"`
+	Message string `json:"message"`
 }
 
 // FriendRequest defines the structure for sending a friend request via the API.
@@ -40,4 +56,30 @@ type CreateGroupChatRequest struct {
 type SendGroupChatMessageRequest struct {
 	Message string `json:"message"`
 	GroupId string `json:"group_id"`
+}
+
+type WsMessageType string
+
+const (
+	WsMsgTypeDirectMessage WsMessageType = "DIRECT_MESSAGE"
+	WsMsgTypeGroupMessage  WsMessageType = "GROUP_MESSAGE"
+)
+
+// WsMessage wrapper
+type WsMessage struct {
+	Type    WsMessageType   `json:"type"`
+	Payload json.RawMessage `json:"payload"`
+}
+
+// WsDirectMessagePayload for when a new direct message is received
+type WsDirectMessagePayload struct {
+	SenderPeerId string `json:"sender_peer_id"`
+	Message      string `json:"message"`
+}
+
+// WsGroupMessagePayload for when a new group message is received
+type WsGroupMessagePayload struct {
+	GroupId      string `json:"group_id"`
+	SenderPeerId string `json:"sender_peer_id"`
+	Message      string `json:"message"`
 }

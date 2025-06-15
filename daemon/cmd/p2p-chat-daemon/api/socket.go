@@ -77,35 +77,41 @@ func (h *ApiHandler) readLoop(conn *websocket.Conn) {
 			break
 		}
 
-		var msg ChatMessageRequest
+		var msg MessageRequest
 		if err := json.Unmarshal(messageBytes, &msg); err != nil {
 			log.Printf("API WS ReadLoop: can not deserialize mesage %s", string(messageBytes))
 			continue
 		}
 
-		h.chatService.SendMessage(msg.TargetPeerID, msg.Message)
+		if msg.Type == WsMsgTypeDirectMessage {
+			var req WsDirectMessageRequestPayload
+			json.Unmarshal(msg.Payload, &req)
+
+			h.chatService.SendMessage(req.TargetPeerID, req.Message)
+		} else if msg.Type == WsMsgTypeGroupMessage {
+			var req WsGroupMessageRequestPayload
+			json.Unmarshal(msg.Payload, &req)
+
+			h.chatService.SendGroupMessage(req.GroupId, req.Message)
+		}
 	}
 }
 
-func (h *ApiHandler) send(msg string) {
-	log.Printf("API WS Send: Sending message 1: %s", msg)
+func (h *ApiHandler) send(msg []byte) {
 	h.wsMu.Lock()
 	defer h.wsMu.Unlock()
-	log.Printf("API WS Send: Sending message 2: %s", msg)
-
-	bytes := []byte(msg)
 
 	if h.wsConn == nil {
 		log.Printf("API WS Send: No connection to send message")
 		return
 	}
 
-	err := h.wsConn.WriteMessage(websocket.TextMessage, bytes)
+	err := h.wsConn.WriteMessage(websocket.TextMessage, msg)
 
 	if err != nil {
 		log.Printf("API WS Send: Failed to send message: %v", err)
 		return
 	}
 
-	log.Printf("API WS Send: Sending message 3: %s", msg)
+	log.Printf("API WS Send: message sent %s", msg)
 }

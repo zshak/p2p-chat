@@ -89,7 +89,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 
 	keyService := identity.NewGroupKeyStore(keyRepo, ctx)
 
-	pubsubService, err := pubsub.NewPubSubService(ctx, appState, keyService)
+	pubsubService, err := pubsub.NewPubSubService(eventbus, ctx, appState, keyService)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pubsub service: %w", err)
 	}

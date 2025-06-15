@@ -14,6 +14,8 @@ import (
 type MessageRepository interface {
 	// Store saves a new message to the database.
 	Store(ctx context.Context, msg types.ChatMessage) (id int64, err error)
+
+	StoreGroupMessage(ctx context.Context, msg types.StoredGroupMessage) error
 }
 
 // --- SQLite Implementation ---

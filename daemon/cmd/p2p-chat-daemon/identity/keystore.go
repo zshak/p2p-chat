@@ -8,6 +8,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core/crypto_utils"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"golang.org/x/crypto/argon2"
@@ -103,17 +105,17 @@ func SaveEncryptedKey(keyPath string, privKey crypto.PrivKey, password []byte) e
 }
 
 // LoadAndDecryptKey loads an encrypted key from keyPath and decrypts it using the password.
-func LoadAndDecryptKey(keyPath string, password []byte) (crypto.PrivKey, error) {
+func LoadAndDecryptKey(keyPath string, password []byte) (crypto.PrivKey, []byte, error) {
 	if len(password) == 0 {
-		return nil, fmt.Errorf("password cannot be empty")
+		return nil, nil, fmt.Errorf("password cannot be empty")
 	}
 
 	file, err := os.Open(keyPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("key file not found at %s", keyPath)
+			return nil, nil, fmt.Errorf("key file not found at %s", keyPath)
 		}
-		return nil, fmt.Errorf("failed to open key file %s: %w", keyPath, err)
+		return nil, nil, fmt.Errorf("failed to open key file %s: %w", keyPath, err)
 	}
 	defer file.Close()
 
@@ -122,19 +124,19 @@ func LoadAndDecryptKey(keyPath string, password []byte) (crypto.PrivKey, error) 
 	nonce := make([]byte, nonceLen)
 
 	if _, err := io.ReadFull(file, salt); err != nil {
-		return nil, fmt.Errorf("failed to read salt from key file: %w", err)
+		return nil, nil, fmt.Errorf("failed to read salt from key file: %w", err)
 	}
 	if _, err := io.ReadFull(file, nonce); err != nil {
-		return nil, fmt.Errorf("failed to read nonce from key file: %w", err)
+		return nil, nil, fmt.Errorf("failed to read nonce from key file: %w", err)
 	}
 
 	ciphertext, err := io.ReadAll(file) // Read the rest as ciphertext
 	if err != nil {
-		return nil, fmt.Errorf("failed to read ciphertext from key file: %w", err)
+		return nil, nil, fmt.Errorf("failed to read ciphertext from key file: %w", err)
 	}
 
 	if len(ciphertext) == 0 {
-		return nil, fmt.Errorf("key file %s appears corrupted (empty ciphertext)", keyPath)
+		return nil, nil, fmt.Errorf("key file %s appears corrupted (empty ciphertext)", keyPath)
 	}
 
 	// Derive decryption key
@@ -143,30 +145,40 @@ func LoadAndDecryptKey(keyPath string, password []byte) (crypto.PrivKey, error) 
 	// Create AES cipher block
 	block, err := aes.NewCipher(derivedKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create AES cipher for decryption: %w", err)
+		return nil, nil, fmt.Errorf("failed to create AES cipher for decryption: %w", err)
 	}
 
 	// Create GCM AEAD cipher
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create AES-GCM cipher for decryption: %w", err)
+		return nil, nil, fmt.Errorf("failed to create AES-GCM cipher for decryption: %w", err)
 	}
 
 	// Decrypt the ciphertext
 	plaintext, err := aesgcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		// Common cause: incorrect password or corrupted file
-		return nil, fmt.Errorf("failed to decrypt key (incorrect password or corrupted file): %w", err)
+		return nil, nil, fmt.Errorf("failed to decrypt key (incorrect password or corrupted file): %w", err)
 	}
 
 	// Unmarshal the decrypted bytes back into a private key
 	privKey, err := crypto.UnmarshalPrivateKey(plaintext)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal decrypted key bytes: %w", err)
+		return nil, nil, fmt.Errorf("failed to unmarshal decrypted key bytes: %w", err)
 	}
 
+	configDir, err := os.UserConfigDir()
+
+	salt, err = crypto_utils.GetDatabaseFieldSalt(configDir, core.DefaultCryptoConfig)
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get database field salt: %w", err)
+	}
+
+	key := crypto_utils.DeriveKeyFromPassword(password, salt, core.DefaultCryptoConfig)
+
 	log.Printf("Successfully loaded and decrypted key from %s", keyPath)
-	return privKey, nil
+	return privKey, key, nil
 }
 
 // Helper to check if key exists
