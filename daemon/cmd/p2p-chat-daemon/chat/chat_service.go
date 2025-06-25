@@ -103,7 +103,7 @@ func (s *Service) handleChatStream(stream network.Stream) {
 	isFriend, _ := s.profileService.IsFriend(peerID.String())
 
 	if !isFriend {
-		log.Printf("Chat: Received new stream from %s, but they are not a friend. Closing...", peerID.ShortString())
+		log.Printf("Chat: Received new stream from %s, but they are not a friends. Closing...", peerID.ShortString())
 		return
 	}
 

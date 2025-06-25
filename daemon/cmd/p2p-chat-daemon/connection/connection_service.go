@@ -52,12 +52,12 @@ func NewConnectionService(
 	}
 }
 
-// Start launches the background goroutine for checking friend statuses.
+// Start launches the background goroutine for checking friends statuses.
 func (s *Service) Start() {
 	ps := ping.NewPingService(*s.appState.Node)
 	s.pingService = ps
 
-	log.Println("Connection Service: Starting friend online status checker...")
+	log.Println("Connection Service: Starting friends online status checker...")
 	s.wg.Add(1)
 	go s.statusCheckLoop()
 }
@@ -95,7 +95,7 @@ func (s *Service) statusCheckLoop() {
 			log.Println("Connection Service: Status check loop stopping due to context cancellation.")
 			return
 		case <-ticker.C:
-			log.Println("Connection Service: Performing periodic friend status check...")
+			log.Println("Connection Service: Performing periodic friends status check...")
 			s.checkAllFriends()
 		}
 	}
@@ -114,7 +114,7 @@ func (s *Service) checkAllFriends() {
 		return
 	}
 
-	log.Printf("Connection Service: Checking status of %d approved friend(s)...", len(approvedFriends))
+	log.Printf("Connection Service: Checking status of %d approved friends(s)...", len(approvedFriends))
 	var checkWg sync.WaitGroup
 	for _, friendRel := range approvedFriends {
 		checkWg.Add(1)
@@ -126,7 +126,7 @@ func (s *Service) checkAllFriends() {
 
 			friendPID, err := peer.Decode(fRel.PeerID)
 			if err != nil {
-				log.Printf("Connection Service: Error decoding friend PeerID %s: %v", fRel.PeerID, err)
+				log.Printf("Connection Service: Error decoding friends PeerID %s: %v", fRel.PeerID, err)
 				return
 			}
 

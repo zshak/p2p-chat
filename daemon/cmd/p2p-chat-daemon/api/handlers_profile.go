@@ -7,8 +7,9 @@ import (
 	"net/http"
 )
 
-// handleSendMessage handles POST requests to /profile/friend/request
+// handleSendMessage handles POST requests to /profile/friends/request
 func (h *ApiHandler) handleFriendRequest(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "HEEEEEEEEEEEEEEEEEEEEEEEEREEEEEEEEEEEEEEE")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -24,7 +25,7 @@ func (h *ApiHandler) handleFriendRequest(w http.ResponseWriter, r *http.Request)
 	err := h.profileService.SendFriendRequest(req.ReceiverPeerId)
 
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error sending friend request: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error sending friends request: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -33,7 +34,7 @@ func (h *ApiHandler) handleFriendRequest(w http.ResponseWriter, r *http.Request)
 	fmt.Fprintf(w, "Friend request sent successfully")
 }
 
-// handleFriendRequestResponse handles PATCH requests to /profile/friend/response
+// handleFriendRequestResponse handles PATCH requests to /profile/friends/response
 func (h *ApiHandler) handleFriendRequestResponse(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -50,7 +51,7 @@ func (h *ApiHandler) handleFriendRequestResponse(w http.ResponseWriter, r *http.
 	err := h.profileService.RespondToFriendRequest(req.PeerId, req.IsAccepted)
 
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error responging to friend request: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error responging to friends request: %v", err), http.StatusInternalServerError)
 		return
 	}
 

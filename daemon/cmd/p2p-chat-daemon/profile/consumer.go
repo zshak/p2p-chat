@@ -70,22 +70,22 @@ func (c *Consumer) handleEvent(event interface{}) {
 	switch event := event.(type) {
 
 	case events.FriendRequestReceived:
-		log.Println("received friend request received event")
+		log.Println("received friends request received event")
 		c.handleFriendRequestReceived(event.FriendRequest)
 		return
 
 	case events.FriendRequestSentEvent:
-		log.Println("received friend request sent event")
+		log.Println("received friends request sent event")
 		c.handleFriendRequestSent(event)
 		return
 
 	case events.FriendResponseSentEvent:
-		log.Println("received friend response sent event")
+		log.Println("received friends response sent event")
 		c.handleFriendResponseSentEvent(event)
 		return
 
 	case events.FriendResponseReceivedEvent:
-		log.Println("received friend response received event")
+		log.Println("received friends response received event")
 		c.handleFriendResponseReceivedEvent(event)
 		return
 	}
@@ -118,9 +118,9 @@ func (c *Consumer) handleFriendRequestReceived(request types.FriendRequestData) 
 
 	err = c.relationshipRepo.Store(storeCtx, entity)
 	if err != nil {
-		log.Printf("Profile Consumer: ERROR - Failed to store friend request from %s: %v", request.SenderPeerID, err)
+		log.Printf("Profile Consumer: ERROR - Failed to store friends request from %s: %v", request.SenderPeerID, err)
 	} else {
-		log.Printf("Profile Consumer: Successfully stored friend request from %s", request.SenderPeerID)
+		log.Printf("Profile Consumer: Successfully stored friends request from %s", request.SenderPeerID)
 	}
 }
 
@@ -151,9 +151,9 @@ func (c *Consumer) handleFriendRequestSent(event events.FriendRequestSentEvent) 
 
 	err = c.relationshipRepo.Store(storeCtx, entity)
 	if err != nil {
-		log.Printf("Profile Consumer: ERROR - Failed to store friend request sent to %s: %v", event.ReceiverPeerId, err)
+		log.Printf("Profile Consumer: ERROR - Failed to store friends request sent to %s: %v", event.ReceiverPeerId, err)
 	} else {
-		log.Printf("Profile Consumer: Successfully stored friend request sent to %s", event.ReceiverPeerId)
+		log.Printf("Profile Consumer: Successfully stored friends request sent to %s", event.ReceiverPeerId)
 	}
 }
 
@@ -163,10 +163,10 @@ func (c *Consumer) handleFriendResponseSentEvent(event events.FriendResponseSent
 		event.IsAccepted,
 	)
 	if err != nil {
-		log.Printf("Profile Consumer: ERROR - Failed to send friend response to %s: %v", event.PeerId, err)
+		log.Printf("Profile Consumer: ERROR - Failed to send friends response to %s: %v", event.PeerId, err)
 		return
 	}
-	log.Printf("Profile Consumer: Successfully sent friend response to %s", event.PeerId)
+	log.Printf("Profile Consumer: Successfully sent friends response to %s", event.PeerId)
 }
 
 func (c *Consumer) handleFriendResponseReceivedEvent(event events.FriendResponseReceivedEvent) {
@@ -203,8 +203,8 @@ func (c *Consumer) handleFriendResponseReceivedEvent(event events.FriendResponse
 
 	err = c.relationshipRepo.UpdateStatus(storeCtx, entity)
 	if err != nil {
-		log.Printf("Profile Consumer: ERROR - Failed to store friend response from %s: %v", event.SenderPeerId, err)
+		log.Printf("Profile Consumer: ERROR - Failed to store friends response from %s: %v", event.SenderPeerId, err)
 	} else {
-		log.Printf("Profile Consumer: Successfully stored friend response from %s", event.SenderPeerId)
+		log.Printf("Profile Consumer: Successfully stored friends response from %s", event.SenderPeerId)
 	}
 }

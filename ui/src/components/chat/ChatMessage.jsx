@@ -6,12 +6,17 @@ import {
     Avatar,
 } from '@mui/material';
 
-const ChatMessage = ({ message, activeUsers }) => {
-    const isMyMessage = message.sender === 'me';
+const ChatMessage = ({ message, currentUser }) => {
+    const isMyMessage = message.sender === 'me' || message.sender === currentUser?.peerId;
 
     const formatTime = (timestamp) => {
         const date = new Date(timestamp);
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const getSenderInitial = () => {
+        if (isMyMessage) return 'Y'; // Your initial
+        return message.senderName ? message.senderName.charAt(0).toUpperCase() : 'U';
     };
 
     return (
@@ -24,7 +29,7 @@ const ChatMessage = ({ message, activeUsers }) => {
         >
             {!isMyMessage && (
                 <Avatar sx={{ bgcolor: 'secondary.main', mr: 1 }}>
-                    {activeUsers[0]?.name?.charAt(0) || 'U'}
+                    {getSenderInitial()}
                 </Avatar>
             )}
             <Box

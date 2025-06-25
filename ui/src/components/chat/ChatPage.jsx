@@ -13,12 +13,11 @@ import {
     Container, Avatar
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-// import ChatIcon from '@mui/icons-material/Chat';
 import CloseIcon from '@mui/icons-material/Close';
 import ChatMessage from './ChatMessage';
 import MessageInput from './MessageInput';
 import Sidebar from '../sidebar/Sidebar';
-import { SAMPLE_MESSAGES, ACTIVE_USERS, DAEMON_STATES } from '../utils/constants';
+import { SAMPLE_MESSAGES, DAEMON_STATES } from '../utils/constants'; // Remove ACTIVE_USERS import
 import {checkStatus} from "../../services/api.js";
 import chatIcon from '../../../public/icon.svg';
 
@@ -111,7 +110,7 @@ function ChatPage() {
                             <CloseIcon />
                         </IconButton>
                     </Box>
-                    <Sidebar activeUsers={ACTIVE_USERS} />
+                    <Sidebar />
                 </Drawer>
             )}
 
@@ -130,7 +129,7 @@ function ChatPage() {
                         },
                     }}
                 >
-                    <Sidebar activeUsers={ACTIVE_USERS} />
+                    <Sidebar />
                 </Drawer>
             )}
 
@@ -148,7 +147,6 @@ function ChatPage() {
                                 <MenuIcon />
                             </IconButton>
                         )}
-                        {/*<ChatIcon sx={{ mr: 1 }} />*/}
                         <Avatar sx={{
                             bgcolor: 'primary.main',
                             ml: -1,
@@ -176,7 +174,6 @@ function ChatPage() {
                         <ChatMessage
                             key={message.id}
                             message={message}
-                            activeUsers={ACTIVE_USERS}
                         />
                     ))}
                     <div ref={messagesEndRef} />

@@ -50,7 +50,7 @@ func (s *Service) Register() {
 func (s *Service) handleFriendRequestStream(stream network.Stream) {
 	remotePeerId := stream.Conn().RemotePeer()
 
-	log.Printf("Friend Request: Received friend request from %s", remotePeerId.String())
+	log.Printf("Friend Request: Received friends request from %s", remotePeerId.String())
 
 	receivedBytes, err := io.ReadAll(stream)
 
@@ -69,7 +69,7 @@ func (s *Service) handleFriendRequestStream(stream network.Stream) {
 		return
 	}
 
-	log.Printf("Friend Request Handler: Received friend request: %s", receivedBytes)
+	log.Printf("Friend Request Handler: Received friends request: %s", receivedBytes)
 
 	requesterPubKey := (*s.appState.Node).Peerstore().PubKey(remotePeerId)
 
@@ -100,7 +100,7 @@ func (s *Service) handleFriendRequestStream(stream network.Stream) {
 func (s *Service) handleFriendResponseStream(stream network.Stream) {
 	remotePeerId := stream.Conn().RemotePeer()
 
-	log.Printf("Friend Response: Received friend response from %s", remotePeerId.String())
+	log.Printf("Friend Response: Received friends response from %s", remotePeerId.String())
 
 	receivedBytes, err := io.ReadAll(stream)
 
@@ -119,7 +119,7 @@ func (s *Service) handleFriendResponseStream(stream network.Stream) {
 		return
 	}
 
-	log.Printf("Friend Response Handler: Received friend response: %s", receivedBytes)
+	log.Printf("Friend Response Handler: Received friends response: %s", receivedBytes)
 
 	requesterPubKey := (*s.appState.Node).Peerstore().PubKey(remotePeerId)
 
@@ -164,7 +164,7 @@ func (s *Service) SendFriendRequest(receiverPeerId string) error {
 	}
 
 	if targetPID == (*s.appState.Node).ID() {
-		return errors.New(fmt.Sprintf("Cannot send friend request to self"))
+		return errors.New(fmt.Sprintf("Cannot send friends request to self"))
 	}
 
 	data := types.FriendRequestData{
@@ -234,9 +234,9 @@ func (s *Service) SendFriendRequest(receiverPeerId string) error {
 	}
 
 	if err != nil {
-		log.Printf("Error writing/closing friend request stream to %s: %v", receiverPeerId, err)
+		log.Printf("Error writing/closing friends request stream to %s: %v", receiverPeerId, err)
 		stream.Reset() // Reset on error
-		return fmt.Errorf("failed to send/close friend request: %w", err)
+		return fmt.Errorf("failed to send/close friends request: %w", err)
 	}
 
 	s.bus.PublishAsync(events.FriendRequestSentEvent{ReceiverPeerId: receiverPeerId, Timestamp: time.Now()})
@@ -318,9 +318,9 @@ func (s *Service) SendFriendResponse(receiverPeerId string, isApproved bool) err
 	}
 
 	if err != nil {
-		log.Printf("Error writing/closing friend response stream to %s: %v", receiverPeerId, err)
+		log.Printf("Error writing/closing friends response stream to %s: %v", receiverPeerId, err)
 		stream.Reset() // Reset on error
-		return fmt.Errorf("failed to send/close friend response: %w", err)
+		return fmt.Errorf("failed to send/close friends response: %w", err)
 	}
 
 	log.Printf("Friend response sent successfully to %s", receiverPeerId)
@@ -345,7 +345,7 @@ func (s *Service) RespondToFriendRequest(receiverPeerId string, isAccepted bool)
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to update friend relationship status: %w", err)
+		return fmt.Errorf("failed to update friends relationship status: %w", err)
 	}
 
 	s.bus.PublishAsync(events.FriendResponseSentEvent{PeerId: receiverPeerId, IsAccepted: isAccepted})

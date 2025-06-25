@@ -200,8 +200,8 @@ func (r *sqliteRelationshipRepository) GetAcceptedRelations(ctx context.Context)
 		}
 
 		if errScan != nil {
-			log.Printf("Storage: Error scanning approved friend row: %v", errScan)
-			return nil, fmt.Errorf("error scanning approved friend row: %w", errScan)
+			log.Printf("Storage: Error scanning approved friends row: %v", errScan)
+			return nil, fmt.Errorf("error scanning approved friends row: %w", errScan)
 		}
 
 		friends = append(friends, rel)
@@ -221,7 +221,7 @@ func stringToFriendStatus(s string) types.FriendStatus {
 	case "4":
 		return types.FriendStatusRejected
 	default:
-		log.Printf("WARN: Unknown friend status string '%s' from DB, defaulting to None.", s)
+		log.Printf("WARN: Unknown friends status string '%s' from DB, defaulting to None.", s)
 		return types.FriendStatusNone // Default or error
 	}
 }
