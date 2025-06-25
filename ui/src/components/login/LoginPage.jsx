@@ -24,7 +24,6 @@ function LoginPage() {
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     useEffect(() => {
-        // Check daemon status when component mounts
         checkDaemonStatus();
     }, []);
 
@@ -54,48 +53,39 @@ function LoginPage() {
 
         try {
             setError(null);
-
             setLoading(true);
             setLoginStep(LOGIN_STEPS.SENDING_REQUEST);
 
-            try {
-                await unlockWithPassword(password);
+            await unlockWithPassword(password);
+
+            setTimeout(async () => {
+                setLoginStep(LOGIN_STEPS.SETUP_CONNECTION);
 
                 setTimeout(async () => {
-                    setLoginStep(LOGIN_STEPS.SETUP_CONNECTION);
+                    setLoginStep(LOGIN_STEPS.VERIFYING_NETWORK);
 
-                    setTimeout(async () => {
-                        setLoginStep(LOGIN_STEPS.VERIFYING_NETWORK);
+                    try {
+                        const statusResponse = await checkStatus();
+                        setDaemonState(statusResponse.data.state);
 
-                        try {
-                            const statusResponse = await checkStatus();
-                            setDaemonState(statusResponse.data.state);
+                        setTimeout(() => {
+                            setLoginStep(LOGIN_STEPS.SUCCESS);
 
                             setTimeout(() => {
-                                setLoginStep(LOGIN_STEPS.SUCCESS);
-
-                                setTimeout(() => {
-                                    navigate('/chat');
-                                }, 200);
-                            }, 500);
-
-                        } catch (statusErr) {
-                            setTimeout(() => {
-                                setLoginStep(LOGIN_STEPS.SUCCESS);
                                 navigate('/chat');
-                            }, 300);
-                        }
-                    }, 900);
-                }, 600);
+                            }, 1000);
+                        }, 2000);
 
-            } catch (unlockErr) {
-                setError('Invalid password. Please try again.');
-                setLoading(false);
-                setPassword('');
-                setLoginStep(LOGIN_STEPS.INITIAL);
-            }
+                    } catch (statusErr) {
+                        setTimeout(() => {
+                            setLoginStep(LOGIN_STEPS.SUCCESS);
+                            navigate('/chat');
+                        }, 1500);
+                    }
+                }, 1000);
+            }, 1500);
 
-        } catch (err) {
+        } catch (unlockErr) {
             setError('Invalid password. Please try again.');
             setLoading(false);
             setPassword('');
@@ -103,15 +93,34 @@ function LoginPage() {
         }
     };
 
-    const handleRegister = async () => {
+    const handleRegister = async (password) => {
         try {
+            setError(null);
             setLoading(true);
-            await registerUser();
-            await checkDaemonStatus();
-            setLoading(false);
+            setLoginStep(LOGIN_STEPS.SENDING_REQUEST);
+
+            await registerUser(password);
+
+            setTimeout(async () => {
+                setLoginStep(LOGIN_STEPS.SETUP_CONNECTION);
+
+                setTimeout(async () => {
+                    setLoginStep(LOGIN_STEPS.VERIFYING_NETWORK);
+
+                    setTimeout(() => {
+                        setLoginStep(LOGIN_STEPS.SUCCESS);
+
+                        setTimeout(() => {
+                            navigate('/chat');
+                        }, 1000);
+                    }, 2000);
+                }, 1000);
+            }, 1500);
+
         } catch (err) {
-            setError('Registration failed. Please try again.');
+            setError(err.response?.data || 'Registration failed. Please try again.');
             setLoading(false);
+            setLoginStep(LOGIN_STEPS.INITIAL);
         }
     };
 
@@ -157,17 +166,13 @@ function LoginPage() {
                     />
                 )}
 
-                {daemonState === DAEMON_STATES.INITIALIZING && (
+                {daemonState === DAEMON_STATES.WAITING_FOR_KEY && (
                     <Box sx={{ width: '100%' }}>
-                        <LoginForm
-                            password={password}
-                            setPassword={setPassword}
-                            handlePasswordSubmit={handlePasswordSubmit}
+                        <RegisterForm
+                            handleRegister={handleRegister}
                             error={error}
-                            isMobile={isMobile}
-                        >
-                            <RegisterForm handleRegister={handleRegister} />
-                        </LoginForm>
+                            loading={loading}
+                        />
                     </Box>
                 )}
 
