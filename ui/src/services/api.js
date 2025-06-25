@@ -12,6 +12,6 @@ const api = axios.create({
 
 export const checkStatus = () => api.get('/status');
 export const unlockWithPassword = (password) => api.post('/setup/unlock-key', { password });
-export const registerUser = () => api.post('/setup/create-key');
+export const registerUser = (password) => api.post('/setup/create-key', { password });
 
 export default api;

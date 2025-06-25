@@ -9,7 +9,7 @@ export const LOGIN_STEPS = {
 export const LOGIN_STEP_MESSAGES = {
     [LOGIN_STEPS.SENDING_REQUEST]: {
         title: 'Sending request...',
-        subtitle: 'Unlocking with your password'
+        subtitle: 'Processing your request'
     },
     [LOGIN_STEPS.SETUP_CONNECTION]: {
         title: 'Setting up secure connection...',
@@ -20,7 +20,7 @@ export const LOGIN_STEP_MESSAGES = {
         subtitle: 'Checking connection status'
     },
     [LOGIN_STEPS.SUCCESS]: {
-        title: 'Login successful!',
+        title: 'Setup successful!',
         subtitle: 'Redirecting to chat...'
     }
 };
@@ -41,6 +41,7 @@ export const ACTIVE_USERS = [
 
 export const DAEMON_STATES = {
     WAITING_FOR_PASSWORD: 'Waiting for Password via API',
+    WAITING_FOR_KEY: 'Waiting for Key Setup via API',
     RUNNING: 'Running',
     INITIALIZING: 'Initializing P2P Network'
 };
