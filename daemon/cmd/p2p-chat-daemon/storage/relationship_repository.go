@@ -16,6 +16,7 @@ type RelationshipRepository interface {
 	UpdateStatus(ctx context.Context, relationship types.FriendRelationship) error
 	GetRelationByPeerId(ctx context.Context, peerId string) (types.FriendRelationship, error)
 	GetAcceptedRelations(ctx context.Context) ([]types.FriendRelationship, error)
+	GetPendingRelations(ctx context.Context) ([]types.FriendRelationship, error)
 }
 
 // --- SQLite Implementation ---
@@ -200,14 +201,79 @@ func (r *sqliteRelationshipRepository) GetAcceptedRelations(ctx context.Context)
 		}
 
 		if errScan != nil {
-			log.Printf("Storage: Error scanning approved friend row: %v", errScan)
-			return nil, fmt.Errorf("error scanning approved friend row: %w", errScan)
+			log.Printf("Storage: Error scanning approved friends row: %v", errScan)
+			return nil, fmt.Errorf("error scanning approved friends row: %w", errScan)
 		}
 
 		friends = append(friends, rel)
 	}
 
 	return friends, nil
+}
+
+func (r *sqliteRelationshipRepository) GetPendingRelations(ctx context.Context) ([]types.FriendRelationship, error) {
+	sqlStmt := `SELECT peer_id, status, requested_at, approved_at
+                FROM relationships WHERE status IN (?, ?)
+				order by peer_id ASC;`
+
+	rows, err := r.db.QueryContext(ctx, sqlStmt, types.FriendStatusSent, types.FriendStatusPending)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []types.FriendRelationship{}, sql.ErrNoRows
+		}
+
+		return []types.FriendRelationship{}, fmt.Errorf("failed to get pending relationships: %w", err)
+	}
+	defer rows.Close()
+
+	var pendingRequests []types.FriendRelationship
+	for rows.Next() {
+		var rel types.FriendRelationship
+		var requestedAtStr, approvedAtStr sql.NullString
+		var statusText string
+
+		errScan := rows.Scan(
+			&rel.PeerID,
+			&statusText,
+			&requestedAtStr,
+			&approvedAtStr,
+		)
+
+		if errScan != nil {
+			log.Printf("Storage: Error scanning pending friends row: %v", errScan)
+			return nil, fmt.Errorf("error scanning pending friends row: %w", errScan)
+		}
+
+		rel.Status = stringToFriendStatus(statusText)
+
+		if requestedAtStr.Valid {
+			t, err := time.Parse(time.RFC3339Nano, requestedAtStr.String)
+			if err == nil {
+				rel.RequestedAt = t
+			} else {
+				log.Printf("WARN: Could not parse requested_at '%s' for peer %s: %v", requestedAtStr.String, rel.PeerID, err)
+			}
+		}
+
+		if approvedAtStr.Valid {
+			t, err := time.Parse(time.RFC3339Nano, approvedAtStr.String)
+			if err == nil {
+				rel.ApprovedAt = t
+			} else {
+				log.Printf("WARN: Could not parse approved_at '%s' for peer %s: %v", approvedAtStr.String, rel.PeerID, err)
+			}
+		}
+
+		pendingRequests = append(pendingRequests, rel)
+	}
+
+	// Check for errors from iterating over rows
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over pending relationships: %w", err)
+	}
+
+	return pendingRequests, nil
 }
 
 func stringToFriendStatus(s string) types.FriendStatus {
@@ -221,7 +287,7 @@ func stringToFriendStatus(s string) types.FriendStatus {
 	case "4":
 		return types.FriendStatusRejected
 	default:
-		log.Printf("WARN: Unknown friend status string '%s' from DB, defaulting to None.", s)
+		log.Printf("WARN: Unknown friends status string '%s' from DB, defaulting to None.", s)
 		return types.FriendStatusNone // Default or error
 	}
 }

@@ -1,0 +1,148 @@
+import React from 'react';
+import {
+    Avatar,
+    Box,
+    Button,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    IconButton,
+    List,
+    ListItem,
+    ListItemSecondaryAction,
+    ListItemText,
+    Typography
+} from '@mui/material';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
+import PersonIcon from '@mui/icons-material/Person';
+import {respondToFriendRequest} from '../../services/api';
+
+const FriendRequests = ({open, onClose, friendRequests, onRequestHandled}) => {
+    const handleAccept = async (peerId) => {
+        try {
+            await respondToFriendRequest(peerId, true);
+            onRequestHandled(peerId, true);
+        } catch (error) {
+            console.error('Failed to accept friend request:', error);
+            // You might want to show an error message to the user
+        }
+    };
+
+    const handleReject = async (peerId) => {
+        try {
+            await respondToFriendRequest(peerId, false);
+            onRequestHandled(peerId, false);
+        } catch (error) {
+            console.error('Failed to reject friend request:', error);
+            // You might want to show an error message to the user
+        }
+    };
+
+    const formatPeerId = (peerId) => {
+        if (!peerId || peerId.length < 8) return peerId;
+        const first2 = peerId.substring(0, 2);
+        const last6 = peerId.substring(peerId.length - 6);
+        return `${first2}*${last6}`;
+    };
+
+    const formatDate = (timestamp) => {
+        if (!timestamp || timestamp === "0001-01-01T00:00:00Z") return '';
+        const date = new Date(timestamp);
+        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+            <DialogTitle>
+                <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
+                    <PersonIcon color="primary"/>
+                    Friend Requests
+                    {friendRequests.length > 0 && (
+                        <Typography variant="caption" color="text.secondary">
+                            ({friendRequests.length})
+                        </Typography>
+                    )}
+                </Box>
+            </DialogTitle>
+
+            <DialogContent sx={{p: 0}}>
+                {friendRequests.length === 0 ? (
+                    <Box sx={{p: 3, textAlign: 'center'}}>
+                        <Typography variant="body2" color="text.secondary">
+                            No pending friend requests
+                        </Typography>
+                    </Box>
+                ) : (
+                    <List>
+                        {friendRequests.map((request, index) => (
+                            <React.Fragment key={request.PeerID}>
+                                <ListItem sx={{py: 2}}>
+                                    <Avatar sx={{bgcolor: 'primary.main', mr: 2}}>
+                                        {request.PeerID.charAt(0).toUpperCase()}
+                                    </Avatar>
+                                    <ListItemText
+                                        primary={request.DisplayName || formatPeerId(request.PeerID)}
+                                        secondary={
+                                            <span>
+                                                <Typography variant="caption" color="text.secondary" component="span">
+                                                    {formatPeerId(request.PeerID)}
+                                                </Typography>
+                                                {request.RequestedAt && request.RequestedAt !== "0001-01-01T00:00:00Z" && (
+                                                    <Typography variant="caption" color="text.secondary"
+                                                                component="span" sx={{display: 'block'}}>
+                                                        Requested: {formatDate(request.RequestedAt)}
+                                                    </Typography>
+                                                )}
+                                            </span>
+                                        }
+                                    />
+                                    <ListItemSecondaryAction>
+                                        <Box sx={{display: 'flex', gap: 1}}>
+                                            <IconButton
+                                                color="success"
+                                                onClick={() => handleAccept(request.PeerID)}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: 'success.light',
+                                                    '&:hover': {bgcolor: 'success.main'}
+                                                }}
+                                            >
+                                                <CheckIcon/>
+                                            </IconButton>
+                                            <IconButton
+                                                color="error"
+                                                onClick={() => handleReject(request.PeerID)}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: 'error.light',
+                                                    '&:hover': {bgcolor: 'error.main'}
+                                                }}
+                                            >
+                                                <CloseIcon/>
+                                            </IconButton>
+                                        </Box>
+                                    </ListItemSecondaryAction>
+                                </ListItem>
+                                {index < friendRequests.length - 1 && <Divider/>}
+                            </React.Fragment>
+                        ))}
+                    </List>
+                )}
+            </DialogContent>
+
+            <DialogActions>
+                <Button onClick={onClose} color="primary">
+                    Close
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
+
+export default FriendRequests;

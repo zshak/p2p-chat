@@ -10,8 +10,15 @@ const api = axios.create({
     }
 });
 
+// register + login endpoints
 export const checkStatus = () => api.get('/status');
 export const unlockWithPassword = (password) => api.post('/setup/unlock-key', { password });
 export const registerUser = (password) => api.post('/setup/create-key', { password });
+
+// friends request endpoints
+export const sendFriendRequest = (receiver_peer_id) => api.post('/profile/friend/request', { receiver_peer_id });
+export const respondToFriendRequest = (peer_id, is_accepted) => api.patch('/profile/friend/response', { peer_id, is_accepted });
+export const getFriends = () => api.get('/profile/friends');
+export const getFriendRequests = () => api.get('/profile/friendRequests');
 
 export default api;

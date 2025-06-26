@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-// handleSendMessage handles POST requests to /profile/friend/request
+// handleSendMessage handles POST requests to /profile/friends/request
 func (h *ApiHandler) handleFriendRequest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -24,7 +24,7 @@ func (h *ApiHandler) handleFriendRequest(w http.ResponseWriter, r *http.Request)
 	err := h.profileService.SendFriendRequest(req.ReceiverPeerId)
 
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error sending friend request: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error sending friends request: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -33,7 +33,7 @@ func (h *ApiHandler) handleFriendRequest(w http.ResponseWriter, r *http.Request)
 	fmt.Fprintf(w, "Friend request sent successfully")
 }
 
-// handleFriendRequestResponse handles PATCH requests to /profile/friend/response
+// handleFriendRequestResponse handles PATCH requests to /profile/friends/response
 func (h *ApiHandler) handleFriendRequestResponse(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -50,7 +50,7 @@ func (h *ApiHandler) handleFriendRequestResponse(w http.ResponseWriter, r *http.
 	err := h.profileService.RespondToFriendRequest(req.PeerId, req.IsAccepted)
 
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error responging to friend request: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error responging to friends request: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -82,4 +82,32 @@ func (h *ApiHandler) handleGetFriends(w http.ResponseWriter, r *http.Request) {
 	// --- Send Success Response -
 	w.Write(responseBytes)
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *ApiHandler) handleGetFriendRequests(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	res, err := h.profileService.GetFriendRequests()
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error getting friend requests: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	responseBytes, err := json.Marshal(res)
+	if err != nil {
+		log.Printf("API Handler: Error marshalling friend requests data to JSON: %v", err)
+		http.Error(w, "Failed to prepare friend requests response", http.StatusInternalServerError)
+		return
+	}
+
+	// Set content type header
+	w.Header().Set("Content-Type", "application/json")
+
+	// Write response
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseBytes)
 }

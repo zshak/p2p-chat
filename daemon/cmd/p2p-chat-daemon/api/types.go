@@ -37,12 +37,12 @@ type WsGroupMessageRequestPayload struct {
 	Message string `json:"message"`
 }
 
-// FriendRequest defines the structure for sending a friend request via the API.
+// FriendRequest defines the structure for sending a friends request via the API.
 type FriendRequest struct {
 	ReceiverPeerId string `json:"receiver_peer_id"`
 }
 
-// FriendRequestResponse defines the structure for accepting or rejecting a friend request via the API.
+// FriendRequestResponse defines the structure for accepting or rejecting a friends request via the API.
 type FriendRequestResponse struct {
 	PeerId     string `json:"peer_id"`
 	IsAccepted bool   `json:"is_accepted"`
