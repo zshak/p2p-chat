@@ -29,11 +29,25 @@ const Sidebar = () => {
     const [loading, setLoading] = useState(true);
     const [addFriendOpen, setAddFriendOpen] = useState(false);
     const [friendRequestsOpen, setFriendRequestsOpen] = useState(false);
+
     const formatPeerId = (peerId) => {
         if (!peerId || peerId.length < 8) return peerId;
         const first2 = peerId.substring(0, 2);
         const last6 = peerId.substring(peerId.length - 6);
         return `${first2}*${last6}`;
+    };
+
+    // Helper function to get display name (you can enhance this later)
+    const getDisplayName = (friend) => {
+        // For now, just use formatted peer ID as display name
+        // Later you can add logic to store/retrieve actual display names
+        return friend.display_name || formatPeerId(friend.PeerID);
+    };
+
+    // Helper function to get initial for avatar
+    const getInitial = (friend) => {
+        const displayName = getDisplayName(friend);
+        return displayName.charAt(0).toUpperCase();
     };
 
     useEffect(() => {
@@ -42,17 +56,20 @@ const Sidebar = () => {
 
     const loadFriendsData = async () => {
         try {
-            // Load both friends and friend requests in parallel
             const [friendsResponse, requestsResponse] = await Promise.all([
                 getFriends(),
                 getFriendRequests()
             ]);
 
-            setFriends(friendsResponse.data || []);
+            // Transform the response to match frontend expectations and filter valid friends
+            const validFriends = (friendsResponse.data || []).filter(friend =>
+                friend && friend.PeerID
+            );
+
+            setFriends(validFriends);
             setFriendRequests(requestsResponse.data || []);
         } catch (error) {
             console.error('Failed to load friends data:', error);
-            // Set empty arrays on error to prevent UI issues
             setFriends([]);
             setFriendRequests([]);
         } finally {
@@ -61,7 +78,7 @@ const Sidebar = () => {
     };
 
     const handleFriendRequestSent = () => {
-        loadFriendsData(); // Refresh both friends and requests
+        loadFriendsData();
     };
 
     const handleRequestHandled = (peerId, isAccepted) => {
@@ -92,7 +109,7 @@ const Sidebar = () => {
                         mb: 1
                     }}
                 >
-                    <PersonIcon fontSize="large"/>
+                    <PersonIcon fontSize="large" />
                 </Avatar>
                 <Typography variant="h6" color="primary.dark">
                     Your Name
@@ -102,26 +119,26 @@ const Sidebar = () => {
                 </Typography>
             </Box>
 
-            <Divider/>
+            <Divider />
 
             {/* Friend Management Buttons */}
-            <Box sx={{p: 2, display: 'flex', gap: 1}}>
+            <Box sx={{ p: 2, display: 'flex', gap: 1 }}>
                 <Tooltip title="Add Friend">
                     <IconButton
                         color="primary"
                         onClick={() => setAddFriendOpen(true)}
-                        sx={{flex: 1}}
+                        sx={{ flex: 1 }}
                     >
-                        <PersonAddIcon/>
+                        <PersonAddIcon />
                     </IconButton>
                 </Tooltip>
                 <Tooltip title="Friend Requests">
                     <IconButton
                         color="primary"
                         onClick={() => setFriendRequestsOpen(true)}
-                        sx={{flex: 1, position: 'relative'}}
+                        sx={{ flex: 1, position: 'relative' }}
                     >
-                        <NotificationsIcon/>
+                        <NotificationsIcon />
                         {friendRequests.length > 0 && (
                             <Badge
                                 badgeContent={friendRequests.length}
@@ -137,19 +154,19 @@ const Sidebar = () => {
                 </Tooltip>
             </Box>
 
-            <Divider/>
+            <Divider />
 
-            <Box sx={{p: 2, flexGrow: 1}}>
-                <Typography variant="subtitle2" color="text.secondary" sx={{pl: 1, mb: 1}}>
+            <Box sx={{ p: 2, flexGrow: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary" sx={{ pl: 1, mb: 1 }}>
                     FRIENDS ({friends.length})
                 </Typography>
 
                 {loading ? (
-                    <Typography variant="body2" color="text.secondary" sx={{pl: 1}}>
+                    <Typography variant="body2" color="text.secondary" sx={{ pl: 1 }}>
                         Loading friends...
                     </Typography>
                 ) : friends.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary" sx={{pl: 1}}>
+                    <Typography variant="body2" color="text.secondary" sx={{ pl: 1 }}>
                         No friends yet. Add some friends to start chatting!
                     </Typography>
                 ) : (
@@ -157,7 +174,7 @@ const Sidebar = () => {
                         {friends.map((friend) => (
                             <ListItem
                                 button
-                                key={friend.peer_id}
+                                key={friend.PeerID}
                                 sx={{
                                     borderRadius: 1,
                                     mb: 0.5,
@@ -177,15 +194,15 @@ const Sidebar = () => {
                                         horizontal: 'right',
                                     }}
                                     overlap="circular"
-                                    sx={{mr: 2}}
+                                    sx={{ mr: 2 }}
                                 >
-                                    <Avatar sx={{bgcolor: 'secondary.light'}}>
-                                        {(friend.display_name || friend.peer_id).charAt(0).toUpperCase()}
+                                    <Avatar sx={{ bgcolor: 'secondary.light' }}>
+                                        {getInitial(friend)}
                                     </Avatar>
                                 </Badge>
                                 <ListItemText
-                                    primary={friend.display_name || formatPeerId(friend.peer_id)}
-                                    secondary={formatPeerId(friend.peer_id)}
+                                    primary={getDisplayName(friend)}
+                                    secondary={formatPeerId(friend.PeerID)}
                                     primaryTypographyProps={{
                                         noWrap: true,
                                         fontSize: 14,
@@ -202,13 +219,13 @@ const Sidebar = () => {
                 )}
             </Box>
 
-            <Box sx={{p: 2}}>
+            <Box sx={{ p: 2 }}>
                 <Button
                     fullWidth
                     variant="outlined"
                     color="primary"
-                    startIcon={<SettingsIcon/>}
-                    sx={{mb: 1}}
+                    startIcon={<SettingsIcon />}
+                    sx={{ mb: 1 }}
                 >
                     Settings
                 </Button>
@@ -216,7 +233,7 @@ const Sidebar = () => {
                     fullWidth
                     variant="contained"
                     color="error"
-                    startIcon={<LogoutIcon/>}
+                    startIcon={<LogoutIcon />}
                     onClick={() => navigate('/login')}
                 >
                     Logout
