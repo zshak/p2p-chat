@@ -377,3 +377,14 @@ func (s *Service) GetFriends() ([]types.FriendRelationship, error) {
 
 	return r, nil
 }
+
+func (s *Service) GetFriendRequests() ([]types.FriendRelationship, error) {
+	r, err := s.relationshipRepo.GetPendingRelations(s.ctx)
+
+	if err != nil {
+		log.Printf("Error getting friend requests: %v", err)
+		return nil, err
+	}
+
+	return r, nil
+}

@@ -16,8 +16,9 @@ export const unlockWithPassword = (password) => api.post('/setup/unlock-key', { 
 export const registerUser = (password) => api.post('/setup/create-key', { password });
 
 // friends request endpoints
-export const sendFriendRequest = (receiverPeerId) => api.post('/profile/friend/request', { receiverPeerId });
-export const respondToFriendRequest = (peerId, isAccepted) => api.patch('/profile/friend/response', { peerId, isAccepted });
-export const getFriends = () => api.get('/profile/friend');
+export const sendFriendRequest = (receiver_peer_id) => api.post('/profile/friend/request', { receiver_peer_id });
+export const respondToFriendRequest = (peer_id, is_accepted) => api.patch('/profile/friend/response', { peer_id, is_accepted });
+export const getFriends = () => api.get('/profile/friends');
+export const getFriendRequests = () => api.get('/profile/friendRequests');
 
 export default api;

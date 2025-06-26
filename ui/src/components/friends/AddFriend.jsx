@@ -11,6 +11,7 @@ import {
     Typography
 } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import {sendFriendRequest} from "../../services/api.js";
 
 const AddFriend = ({ open, onClose, onFriendRequestSent }) => {
     const [peerId, setPeerId] = useState('');
@@ -41,6 +42,7 @@ const AddFriend = ({ open, onClose, onFriendRequestSent }) => {
                 onClose();
             }, 2000);
         } catch (err) {
+            console.log(err)
             setError(err.response?.data || 'Failed to send friends request');
         } finally {
             setLoading(false);
