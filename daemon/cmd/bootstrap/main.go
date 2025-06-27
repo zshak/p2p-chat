@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
 	"log"
 	"os"
 	"os/signal"
@@ -49,6 +51,7 @@ func getHostKey(keyPath string) (crypto.PrivKey, error) {
 func main() {
 	listenAddr := flag.String("listen", "/ip4/0.0.0.0/tcp/4001", "Address to listen on")
 	keyFile := flag.String("key", "bootstrap-node.key", "Path to host private key file")
+	connectAddr := flag.String("connect", "", "Multiaddress of a peer to connect to")
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -86,11 +89,30 @@ func main() {
 		log.Printf("- %s/p2p/%s\n", addr, node.ID())
 	}
 
+	if *connectAddr != "" {
+		log.Printf("Attempting to connect to peer: %s\n", *connectAddr)
+		targetAddr, err := multiaddr.NewMultiaddr(*connectAddr)
+		if err != nil {
+			log.Fatalf("Failed to parse connect multiaddress: %v", err)
+		}
+
+		// Extract the peer ID from the multiaddress
+		addrInfo, err := peer.AddrInfoFromP2pAddr(targetAddr)
+		if err != nil {
+			log.Fatalf("Failed to get peer AddrInfo from multiaddress: %v", err)
+		}
+
+		err = node.Connect(ctx, *addrInfo)
+		if err != nil {
+			log.Printf("Failed to connect to peer %s: %v", addrInfo.ID, err)
+		} else {
+			log.Printf("Successfully connected to peer: %s\n", addrInfo.ID)
+		}
+	}
+
 	kadDHT, err := dht.New(ctx, node,
 		dht.Mode(dht.ModeServer), // This node is a DHT server
 		dht.ProtocolPrefix(dhtProtocol),
-		// No need to specify bootstrap nodes, since they will automatically
-		// discover each other through clients
 	)
 	if err != nil {
 		log.Fatalf("Failed to create DHT: %v", err)
