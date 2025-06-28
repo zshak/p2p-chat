@@ -115,6 +115,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		eventbus,
 		chatHandler,
 		profileHandle,
+		connectionService,
 	)
 	eventbus.PublishAsync(events.ApiStartedEvent{})
 
