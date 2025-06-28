@@ -187,7 +187,7 @@ const Sidebar = () => {
                                 }}
                             >
                                 <Badge
-                                    color={friend.isOnline ? 'success' : 'error'}
+                                    color={friend.IsOnline ? 'success' : 'error'}
                                     variant="dot"
                                     anchorOrigin={{
                                         vertical: 'bottom',

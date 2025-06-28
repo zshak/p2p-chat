@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"log"
 	"net/http"
 )
@@ -65,23 +66,38 @@ func (h *ApiHandler) handleGetFriends(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.profileService.GetFriends()
-
+	// Get friends from profile service
+	friends, err := h.profileService.GetFriends()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error getting friends: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	responseBytes, err := json.Marshal(res)
+	// Enhance friends data with real-time online status
+	for i := range friends {
+		// Decode peer ID to check online status
+		peerID, err := peer.Decode(friends[i].PeerID)
+		if err != nil {
+			log.Printf("API Handler: Error decoding peer ID %s: %v", friends[i].PeerID, err)
+			friends[i].IsOnline = false
+			continue
+		}
+
+		// Get real-time online status from connection service
+		friends[i].IsOnline = h.connectionService.IsOnline(peerID)
+	}
+
+	// Marshal response
+	responseBytes, err := json.Marshal(friends)
 	if err != nil {
 		log.Printf("API Handler: Error marshalling friends data to JSON: %v", err)
 		http.Error(w, "Failed to prepare friends list response", http.StatusInternalServerError)
 		return
 	}
 
-	// --- Send Success Response -
-	w.Write(responseBytes)
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	w.Write(responseBytes)
 }
 
 func (h *ApiHandler) handleGetFriendRequests(w http.ResponseWriter, r *http.Request) {

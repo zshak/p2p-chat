@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/chat"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/connection"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/profile"
@@ -21,13 +22,14 @@ func StartAPIServer(
 	bus *bus.EventBus,
 	chatService *chat.Service,
 	profileService *profile.Service,
+	connectionService *connection.Service,
 ) (net.Listener, *http.Server, *ApiHandler, error) {
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to listen on %s: %w", addr, err)
 	}
 
-	handler := newAPIHandler(appState, bus, chatService, profileService)
+	handler := newAPIHandler(appState, bus, chatService, profileService, connectionService)
 
 	mux := http.NewServeMux()
 
