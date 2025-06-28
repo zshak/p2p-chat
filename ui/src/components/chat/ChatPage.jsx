@@ -1,23 +1,24 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import {useCallback, useEffect, useRef, useState} from 'react';
+import {useNavigate} from 'react-router-dom';
 import {
-    Box,
-    Typography,
     AppBar,
-    Toolbar,
+    Avatar,
+    Box,
+    CircularProgress,
+    Container,
     Drawer,
     IconButton,
-    useTheme,
+    Toolbar,
+    Typography,
     useMediaQuery,
-    CircularProgress,
-    Container, Avatar
+    useTheme
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import ChatMessage from './ChatMessage';
 import MessageInput from './MessageInput';
 import Sidebar from '../sidebar/Sidebar';
-import { SAMPLE_MESSAGES, DAEMON_STATES } from '../utils/constants'; // Remove ACTIVE_USERS import
+import {DAEMON_STATES, SAMPLE_MESSAGES} from '../utils/constants';
 import {checkStatus} from "../../services/api.js";
 import chatIcon from '../../../public/icon.svg';
 
@@ -31,6 +32,28 @@ function ChatPage() {
     const [newMessage, setNewMessage] = useState('');
     const [drawerOpen, setDrawerOpen] = useState(!isMobile);
     const messagesEndRef = useRef(null);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+    const refreshAllData = useCallback(async () => {
+        try {
+            if (!document.hidden && newMessage.trim() === '') {
+                const statusResponse = await checkStatus();
+                setStatus(statusResponse.data.state);
+
+                if (statusResponse.data.state !== DAEMON_STATES.RUNNING) {
+                    navigate('/login');
+                    return;
+                }
+
+                setRefreshTrigger(prev => prev + 1);
+            }
+        } catch (err) {
+            console.error('Data refresh failed:', err);
+            if (err.response?.status === 401) {
+                navigate('/login');
+            }
+        }
+    }, [newMessage, navigate]);
 
     useEffect(() => {
         const verifyStatus = async () => {
@@ -51,8 +74,14 @@ function ChatPage() {
     }, [navigate]);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
     }, [messages]);
+
+    // Auto-refresh every 5 seconds
+    useEffect(() => {
+        const interval = setInterval(refreshAllData, 5000);
+        return () => clearInterval(interval);
+    }, [refreshAllData]);
 
     const handleSendMessage = (e) => {
         e.preventDefault();
@@ -77,10 +106,10 @@ function ChatPage() {
 
     if (loading) {
         return (
-            <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <Box sx={{ textAlign: 'center' }}>
-                    <CircularProgress color="primary" size={60} thickness={4} />
-                    <Typography variant="h6" color="primary" sx={{ mt: 2 }}>
+            <Container sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'}}>
+                <Box sx={{textAlign: 'center'}}>
+                    <CircularProgress color="primary" size={60} thickness={4}/>
+                    <Typography variant="h6" color="primary" sx={{mt: 2}}>
                         Loading Chat...
                     </Typography>
                 </Box>
@@ -89,7 +118,7 @@ function ChatPage() {
     }
 
     return (
-        <Box sx={{ display: 'flex', height: '100vh' }}>
+        <Box sx={{display: 'flex', height: '100vh'}}>
             {isMobile && (
                 <Drawer
                     variant="temporary"
@@ -105,12 +134,12 @@ function ChatPage() {
                         },
                     }}
                 >
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
+                    <Box sx={{display: 'flex', justifyContent: 'flex-end', p: 1}}>
                         <IconButton onClick={toggleDrawer}>
-                            <CloseIcon />
+                            <CloseIcon/>
                         </IconButton>
                     </Box>
-                    <Sidebar />
+                    <Sidebar refreshTrigger={refreshTrigger}/>
                 </Drawer>
             )}
 
@@ -129,11 +158,11 @@ function ChatPage() {
                         },
                     }}
                 >
-                    <Sidebar />
+                    <Sidebar refreshTrigger={refreshTrigger}/>
                 </Drawer>
             )}
 
-            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <Box sx={{flexGrow: 1, display: 'flex', flexDirection: 'column', height: '100%'}}>
                 <AppBar position="static" color="primary" elevation={0}>
                     <Toolbar>
                         {isMobile && (
@@ -142,9 +171,9 @@ function ChatPage() {
                                 aria-label="open drawer"
                                 edge="start"
                                 onClick={toggleDrawer}
-                                sx={{ mr: 2 }}
+                                sx={{mr: 2}}
                             >
-                                <MenuIcon />
+                                <MenuIcon/>
                             </IconButton>
                         )}
                         <Avatar sx={{
@@ -152,9 +181,9 @@ function ChatPage() {
                             ml: -1,
                             mr: 0.5
                         }}>
-                            <img src={chatIcon} alt="Chat Icon" style={{ width: '60%', height: '60%' }} />
+                            <img src={chatIcon} alt="Chat Icon" style={{width: '60%', height: '60%'}}/>
                         </Avatar>
-                        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                        <Typography variant="h6" component="div" sx={{flexGrow: 1}}>
                             P2P Chat
                         </Typography>
                     </Toolbar>
@@ -176,7 +205,7 @@ function ChatPage() {
                             message={message}
                         />
                     ))}
-                    <div ref={messagesEndRef} />
+                    <div ref={messagesEndRef}/>
                 </Box>
 
                 <MessageInput

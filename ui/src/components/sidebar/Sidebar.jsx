@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
     Avatar,
     Badge,
@@ -22,7 +22,7 @@ import {getFriendRequests, getFriends} from '../../services/api';
 import AddFriend from '../friends/AddFriend';
 import FriendRequests from '../friends/FriendRequests';
 
-const Sidebar = () => {
+const Sidebar = ({refreshTrigger = 0}) => {
     const navigate = useNavigate();
     const [friends, setFriends] = useState([]);
     const [friendRequests, setFriendRequests] = useState([]);
@@ -37,37 +37,31 @@ const Sidebar = () => {
         return `${first2}*${last6}`;
     };
 
-    // Helper function to get display name (you can enhance this later)
     const getDisplayName = (friend) => {
-        // For now, just use formatted peer ID as display name
-        // Later you can add logic to store/retrieve actual display names
         return friend.display_name || formatPeerId(friend.PeerID);
     };
 
-    // Helper function to get initial for avatar
     const getInitial = (friend) => {
         const displayName = getDisplayName(friend);
         return displayName.charAt(0).toUpperCase();
     };
 
-    useEffect(() => {
-        loadFriendsData();
-    }, []);
-
-    const loadFriendsData = async () => {
+    const loadFriendsData = useCallback(async () => {
         try {
+
             const [friendsResponse, requestsResponse] = await Promise.all([
                 getFriends(),
                 getFriendRequests()
             ]);
 
-            // Transform the response to match frontend expectations and filter valid friends
             const validFriends = (friendsResponse.data || []).filter(friend =>
                 friend && friend.PeerID
             );
 
             setFriends(validFriends);
             setFriendRequests(requestsResponse.data || []);
+
+
         } catch (error) {
             console.error('Failed to load friends data:', error);
             setFriends([]);
@@ -75,17 +69,35 @@ const Sidebar = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    // Initial load
+    useEffect(() => {
+        loadFriendsData();
+    }, [loadFriendsData]);
+
+    useEffect(() => {
+        if (refreshTrigger > 0) {
+            loadFriendsData();
+        }
+    }, [refreshTrigger, loadFriendsData]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (!document.hidden) {
+                loadFriendsData();
+            }
+        }, 10000);
+
+        return () => clearInterval(interval);
+    }, [loadFriendsData]);
 
     const handleFriendRequestSent = () => {
         loadFriendsData();
     };
 
     const handleRequestHandled = (peerId, isAccepted) => {
-        // Remove the request from pending requests
         setFriendRequests(prev => prev.filter(req => req.PeerID !== peerId));
-
-        // If accepted, refresh friends list to include the new friend
         if (isAccepted) {
             loadFriendsData();
         }
@@ -109,7 +121,7 @@ const Sidebar = () => {
                         mb: 1
                     }}
                 >
-                    <PersonIcon fontSize="large" />
+                    <PersonIcon fontSize="large"/>
                 </Avatar>
                 <Typography variant="h6" color="primary.dark">
                     Your Name
@@ -119,26 +131,25 @@ const Sidebar = () => {
                 </Typography>
             </Box>
 
-            <Divider />
+            <Divider/>
 
-            {/* Friend Management Buttons */}
-            <Box sx={{ p: 2, display: 'flex', gap: 1 }}>
+            <Box sx={{p: 2, display: 'flex', gap: 1}}>
                 <Tooltip title="Add Friend">
                     <IconButton
                         color="primary"
                         onClick={() => setAddFriendOpen(true)}
-                        sx={{ flex: 1 }}
+                        sx={{flex: 1}}
                     >
-                        <PersonAddIcon />
+                        <PersonAddIcon/>
                     </IconButton>
                 </Tooltip>
                 <Tooltip title="Friend Requests">
                     <IconButton
                         color="primary"
                         onClick={() => setFriendRequestsOpen(true)}
-                        sx={{ flex: 1, position: 'relative' }}
+                        sx={{flex: 1, position: 'relative'}}
                     >
-                        <NotificationsIcon />
+                        <NotificationsIcon/>
                         {friendRequests.length > 0 && (
                             <Badge
                                 badgeContent={friendRequests.length}
@@ -154,19 +165,19 @@ const Sidebar = () => {
                 </Tooltip>
             </Box>
 
-            <Divider />
+            <Divider/>
 
-            <Box sx={{ p: 2, flexGrow: 1 }}>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ pl: 1, mb: 1 }}>
+            <Box sx={{p: 2, flexGrow: 1}}>
+                <Typography variant="subtitle2" color="text.secondary" sx={{pl: 1, mb: 1}}>
                     FRIENDS ({friends.length})
                 </Typography>
 
                 {loading ? (
-                    <Typography variant="body2" color="text.secondary" sx={{ pl: 1 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{pl: 1}}>
                         Loading friends...
                     </Typography>
                 ) : friends.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary" sx={{ pl: 1 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{pl: 1}}>
                         No friends yet. Add some friends to start chatting!
                     </Typography>
                 ) : (
@@ -194,9 +205,9 @@ const Sidebar = () => {
                                         horizontal: 'right',
                                     }}
                                     overlap="circular"
-                                    sx={{ mr: 2 }}
+                                    sx={{mr: 2}}
                                 >
-                                    <Avatar sx={{ bgcolor: 'secondary.light' }}>
+                                    <Avatar sx={{bgcolor: 'secondary.light'}}>
                                         {getInitial(friend)}
                                     </Avatar>
                                 </Badge>
@@ -219,13 +230,13 @@ const Sidebar = () => {
                 )}
             </Box>
 
-            <Box sx={{ p: 2 }}>
+            <Box sx={{p: 2}}>
                 <Button
                     fullWidth
                     variant="outlined"
                     color="primary"
-                    startIcon={<SettingsIcon />}
-                    sx={{ mb: 1 }}
+                    startIcon={<SettingsIcon/>}
+                    sx={{mb: 1}}
                 >
                     Settings
                 </Button>
@@ -233,21 +244,19 @@ const Sidebar = () => {
                     fullWidth
                     variant="contained"
                     color="error"
-                    startIcon={<LogoutIcon />}
+                    startIcon={<LogoutIcon/>}
                     onClick={() => navigate('/login')}
                 >
                     Logout
                 </Button>
             </Box>
 
-            {/* Add Friend Dialog */}
             <AddFriend
                 open={addFriendOpen}
                 onClose={() => setAddFriendOpen(false)}
                 onFriendRequestSent={handleFriendRequestSent}
             />
 
-            {/* Friend Requests Dialog */}
             <FriendRequests
                 open={friendRequestsOpen}
                 onClose={() => setFriendRequestsOpen(false)}
