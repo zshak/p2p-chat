@@ -15,6 +15,7 @@ import { LOGIN_STEPS, LOGIN_STEP_MESSAGES, DAEMON_STATES } from '../utils/consta
 
 function LoginPage() {
     const [daemonState, setDaemonState] = useState(null);
+    const [peerIdReceived, setPeerIdReceived] = useState(false);
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -44,6 +45,63 @@ function LoginPage() {
         }
     };
 
+    const pollStatusWithRandomSteps = async () => {
+        const steps = [
+            LOGIN_STEPS.SENDING_REQUEST,
+            LOGIN_STEPS.SETUP_CONNECTION,
+            LOGIN_STEPS.VERIFYING_NETWORK
+        ];
+
+        let currentStepIndex = 0;
+        setLoginStep(steps[currentStepIndex]);
+
+        const pollInterval = setInterval(async () => {
+            try {
+                const response = await checkStatus();
+                const { state, peer_id } = response.data;
+
+                // Check if we received peer_id for the first time
+                if (peer_id && !peerIdReceived) {
+                    setPeerIdReceived(true);
+                    // Move to next random step when peer_id is received
+                    currentStepIndex = Math.min(currentStepIndex + 1, steps.length - 1);
+                    setLoginStep(steps[currentStepIndex]);
+                }
+
+                // Check if state is "Running"
+                if (state === DAEMON_STATES.RUNNING) {
+                    clearInterval(pollInterval);
+                    setLoginStep(LOGIN_STEPS.SUCCESS);
+
+                    setTimeout(() => {
+                        navigate('/chat');
+                    }, 1000);
+                    return;
+                }
+
+                // Randomly advance to next step occasionally (to show progress)
+                if (Math.random() < 0.3 && currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    setLoginStep(steps[currentStepIndex]);
+                }
+
+            } catch (error) {
+                console.error('Error polling status:', error);
+                // Continue polling even on error
+            }
+        }, 1500); // Poll every 1.5 seconds
+
+        // Cleanup interval after 30 seconds max to prevent infinite polling
+        setTimeout(() => {
+            clearInterval(pollInterval);
+            if (loading) {
+                setError('Connection timeout. Please try again.');
+                setLoading(false);
+                setLoginStep(LOGIN_STEPS.INITIAL);
+            }
+        }, 30000);
+    };
+
     const handlePasswordSubmit = async (e) => {
         e.preventDefault();
         if (!password.trim()) {
@@ -54,36 +112,12 @@ function LoginPage() {
         try {
             setError(null);
             setLoading(true);
-            setLoginStep(LOGIN_STEPS.SENDING_REQUEST);
+            setPeerIdReceived(false);
 
             await unlockWithPassword(password);
 
-            setTimeout(async () => {
-                setLoginStep(LOGIN_STEPS.SETUP_CONNECTION);
-
-                setTimeout(async () => {
-                    setLoginStep(LOGIN_STEPS.VERIFYING_NETWORK);
-
-                    try {
-                        const statusResponse = await checkStatus();
-                        setDaemonState(statusResponse.data.state);
-
-                        setTimeout(() => {
-                            setLoginStep(LOGIN_STEPS.SUCCESS);
-
-                            setTimeout(() => {
-                                navigate('/chat');
-                            }, 1000);
-                        }, 2000);
-
-                    } catch (statusErr) {
-                        setTimeout(() => {
-                            setLoginStep(LOGIN_STEPS.SUCCESS);
-                            navigate('/chat');
-                        }, 1500);
-                    }
-                }, 1000);
-            }, 1500);
+            // Start polling with random UI steps
+            pollStatusWithRandomSteps();
 
         } catch (unlockErr) {
             setError('Invalid password. Please try again.');
@@ -97,25 +131,12 @@ function LoginPage() {
         try {
             setError(null);
             setLoading(true);
-            setLoginStep(LOGIN_STEPS.SENDING_REQUEST);
+            setPeerIdReceived(false);
 
             await registerUser(password);
 
-            setTimeout(async () => {
-                setLoginStep(LOGIN_STEPS.SETUP_CONNECTION);
-
-                setTimeout(async () => {
-                    setLoginStep(LOGIN_STEPS.VERIFYING_NETWORK);
-
-                    setTimeout(() => {
-                        setLoginStep(LOGIN_STEPS.SUCCESS);
-
-                        setTimeout(() => {
-                            navigate('/chat');
-                        }, 1000);
-                    }, 2000);
-                }, 1000);
-            }, 1500);
+            // Start polling with random UI steps
+            pollStatusWithRandomSteps();
 
         } catch (err) {
             setError(err.response?.data || 'Registration failed. Please try again.');
