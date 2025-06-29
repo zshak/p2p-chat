@@ -153,7 +153,7 @@ func (c *Consumer) handleFriendRequestSent(event events.FriendRequestSentEvent) 
 
 	entity := types.FriendRelationship{
 		PeerID:      event.ReceiverPeerId,
-		Status:      types.FriendStatusPending,
+		Status:      types.FriendStatusSent,
 		RequestedAt: t,
 	}
 

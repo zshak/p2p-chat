@@ -465,6 +465,10 @@ func (s *Service) PollForFriendResponse() {
 		}
 
 		for _, request := range pendingFriendRequests {
+			if request.Status == types.FriendStatusSent {
+				continue
+			}
+
 			log.Printf("Asking %s", request.PeerID)
 			err := s.AskForFriendRequestResponse(request.PeerID)
 
@@ -549,6 +553,11 @@ func (s *Service) AskForFriendRequestResponse(peerId string) error {
 	if err != nil {
 		log.Printf("AskForFriendRequestResponse: Failed to unmarshal response: %v", err)
 		return fmt.Errorf("AskForFriendRequestResponse: failed to parse response: %w", err)
+	}
+
+	if relationship.Status == types.FriendStatusPending {
+		log.Printf("AskForFriendRequestResponse: Received friend request response with pending status from %s", targetPID.ShortString())
+		return nil
 	}
 
 	s.bus.PublishAsync(events.FriendResponseReceivedEvent{
