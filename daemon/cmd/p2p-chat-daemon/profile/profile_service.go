@@ -3,6 +3,7 @@ package profile
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -201,6 +202,14 @@ func (s *Service) SendFriendRequest(receiverPeerId string) error {
 
 	requestBytes, err := json.Marshal(request)
 
+	s.bus.PublishAsync(events.FriendRequestSentEvent{ReceiverPeerId: receiverPeerId, Timestamp: time.Now()})
+
+	go s.SendFriendRequestAsync(receiverPeerId, targetPID, err, requestBytes)
+
+	return nil
+}
+
+func (s *Service) SendFriendRequestAsync(receiverPeerId string, targetPID peer.ID, err error, requestBytes []byte) error {
 	log.Printf("Friend request API: Checking connectedness to %s", targetPID.ShortString())
 	connectedness := (*s.appState.Node).Network().Connectedness(targetPID)
 
@@ -210,7 +219,7 @@ func (s *Service) SendFriendRequest(receiverPeerId string) error {
 		addrInfo := (*s.appState.Node).Peerstore().PeerInfo(targetPID)
 		if len(addrInfo.Addrs) == 0 {
 			log.Printf("Friend request API: No addresses found in Peerstore for %s. Cannot connect.", targetPID.ShortString())
-			return errors.New(fmt.Sprintf("Cannot connect to peer %s: No known addresses", targetPID.ShortString()))
+			return nil
 		}
 
 		// Use a separate context and timeout for the connection attempt
@@ -220,7 +229,7 @@ func (s *Service) SendFriendRequest(receiverPeerId string) error {
 		err = (*s.appState.Node).Connect(connectCtx, addrInfo)
 		if err != nil {
 			log.Printf("Friend request API: Failed to connect to %s: %v", targetPID.ShortString(), err)
-			return errors.New(fmt.Sprintf("Failed to establish connection with peer %s: %v", targetPID.ShortString(), err))
+			return nil
 		}
 		log.Printf("Friend request API: Successfully connected to %s.", targetPID.ShortString())
 	} else {
@@ -236,7 +245,7 @@ func (s *Service) SendFriendRequest(receiverPeerId string) error {
 	stream, err := (*s.appState.Node).NewStream(ctx, targetPID, core.FriendRequestProtocolID)
 	if err != nil {
 		log.Printf("Friend request API: Failed to open stream to %s: %v", targetPID.ShortString(), err)
-		return errors.New(fmt.Sprintf("Failed to connect/open stream to peer %s: %v", targetPID.ShortString(), err))
+		return nil
 	}
 	log.Printf("Friend request API: Stream opened successfully to %s", targetPID.ShortString())
 
@@ -251,10 +260,9 @@ func (s *Service) SendFriendRequest(receiverPeerId string) error {
 	if err != nil {
 		log.Printf("Error writing/closing friends request stream to %s: %v", receiverPeerId, err)
 		stream.Reset() // Reset on error
-		return fmt.Errorf("failed to send/close friends request: %w", err)
+		return nil
 	}
 
-	s.bus.PublishAsync(events.FriendRequestSentEvent{ReceiverPeerId: receiverPeerId, Timestamp: time.Now()})
 	log.Printf("Friend request sent successfully to %s", receiverPeerId)
 	return nil
 }
@@ -416,9 +424,22 @@ func (s *Service) handleFriendResponsePollStream(stream network.Stream) {
 	// Fetch relationship status from repository
 	relationship, err := s.relationshipRepo.GetRelationByPeerId(ctx, peerID.String())
 	if err != nil {
-		log.Printf("FriendResponsePoll Handler: Error fetching relationship for %s: %v", peerID.String(), err)
-		stream.Reset()
-		return
+		if errors.Is(err, sql.ErrNoRows) {
+			s.bus.PublishAsync(events.FriendRequestReceived{
+				FriendRequest: types.FriendRequestData{
+					SenderPeerID: peerID.String(),
+					Timestamp:    time.Now().String(),
+				},
+			})
+
+			relationship = types.FriendRelationship{
+				Status: types.FriendStatusPending,
+			}
+		} else {
+			log.Printf("FriendResponsePoll Handler: Error fetching relationship for %s: %v", peerID.String(), err)
+			stream.Reset()
+			return
+		}
 	}
 
 	// Marshal the relationship to JSON
@@ -465,7 +486,7 @@ func (s *Service) PollForFriendResponse() {
 		}
 
 		for _, request := range pendingFriendRequests {
-			if request.Status == types.FriendStatusSent {
+			if request.Status != types.FriendStatusSent {
 				continue
 			}
 
