@@ -14,11 +14,12 @@ import (
 type DaemonState int
 
 const (
-	GroupChatProtocolID      = "/p2p-chat-daemon/group-chat/1.0.0"
-	ChatProtocolID           = "/p2p-chat-daemon/chat/1.0.0"
-	FriendRequestProtocolID  = "/p2p-chat-daemon/friends-request/1.0.0"
-	FriendResponseProtocolID = "/p2p-chat-daemon/friends-response/1.0.0"
-	OnlineAnnouncementTopic  = "p2p-chat/online-announcements"
+	GroupChatProtocolID          = "/p2p-chat-daemon/group-chat/1.0.0"
+	ChatProtocolID               = "/p2p-chat-daemon/chat/1.0.0"
+	FriendRequestProtocolID      = "/p2p-chat-daemon/friends-request/1.0.0"
+	FriendResponseProtocolID     = "/p2p-chat-daemon/friends-response/1.0.0"
+	FriendResponsePollProtocolId = "/p2p-chat-daemon/friends-response-poll/1.0.0"
+	OnlineAnnouncementTopic      = "p2p-chat/online-announcements"
 )
 
 const (

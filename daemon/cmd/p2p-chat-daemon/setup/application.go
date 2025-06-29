@@ -94,7 +94,9 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		return nil, fmt.Errorf("failed to create pubsub service: %w", err)
 	}
 
-	profileHandle := profile.NewProtocolHandler(appState, eventbus, ctx, relationshipRepo)
+	connectionService := connection.NewConnectionService(ctx, appState, relationshipRepo, eventbus)
+
+	profileHandle := profile.NewProtocolHandler(appState, eventbus, ctx, relationshipRepo, connectionService)
 
 	chatHandler := chat.NewProtocolHandler(
 		appState,
@@ -106,7 +108,6 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		pubsubService,
 		msgRepo,
 	)
-	connectionService := connection.NewConnectionService(ctx, appState, relationshipRepo, eventbus)
 
 	_, server, handler, err := uiapi.StartAPIServer(
 		ctx,

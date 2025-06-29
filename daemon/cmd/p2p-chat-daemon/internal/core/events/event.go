@@ -73,7 +73,7 @@ type FriendRequestReceived struct {
 
 type FriendResponseReceivedEvent struct {
 	SenderPeerId string
-	IsAccepted   bool
+	Status       types.FriendStatus
 	Timestamp    string
 }
 

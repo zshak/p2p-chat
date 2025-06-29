@@ -85,7 +85,7 @@ func (c *Consumer) handleEvent(event interface{}) {
 		return
 
 	case events.FriendResponseReceivedEvent:
-		log.Println("received friends response received event")
+		log.Printf("received friends response received event - %s", event)
 		c.handleFriendResponseReceivedEvent(event)
 		return
 	}
@@ -114,6 +114,14 @@ func (c *Consumer) handleFriendRequestReceived(request types.FriendRequestData) 
 		PeerID:      request.SenderPeerID,
 		Status:      types.FriendStatusPending,
 		RequestedAt: t,
+	}
+
+	curRel, err := c.relationshipRepo.GetRelationByPeerId(storeCtx, request.SenderPeerID)
+
+	// already exists
+	if curRel.PeerID != "" {
+		log.Printf("Profile Consumer: Received duplicate friends request from %s", request.SenderPeerID)
+		return
 	}
 
 	err = c.relationshipRepo.Store(storeCtx, entity)
@@ -173,12 +181,7 @@ func (c *Consumer) handleFriendResponseReceivedEvent(event events.FriendResponse
 	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second) // Short timeout for DB operation
 	defer cancel()
 
-	var status types.FriendStatus
-	if event.IsAccepted {
-		status = types.FriendStatusApproved
-	} else {
-		status = types.FriendStatusRejected
-	}
+	status := event.Status
 
 	// Parse the timestamp (excluding the "m=+46.107792917" part)
 	layout := "2006-01-02 15:04:05.999999 -0700 MST"
