@@ -29,6 +29,8 @@ func (c *Consumer) Start() {
 	log.Println("api consumer started")
 	c.bus.Subscribe(c.eventsChan, events.MessageReceivedEvent{})
 	c.bus.Subscribe(c.eventsChan, events.GroupChatMessageReceivedEvent{})
+	c.bus.Subscribe(c.eventsChan, events.MessageSentEvent{})
+	c.bus.Subscribe(c.eventsChan, events.GroupChatMessageSentEvent{})
 
 	go c.listen()
 }
@@ -51,6 +53,14 @@ func (c *Consumer) handleEvent(event interface{}) {
 
 	case events.MessageReceivedEvent:
 		c.HandleMessageReceived(ev.Message)
+		return
+
+	case events.MessageSentEvent:
+		c.HandleMessageReceived(ev.Message)
+		return
+
+	case events.GroupChatMessageSentEvent:
+		c.HandleGroupMessageReceived(ev.Message)
 		return
 
 	case events.GroupChatMessageReceivedEvent:
