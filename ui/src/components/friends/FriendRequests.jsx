@@ -21,6 +21,9 @@ import PersonIcon from '@mui/icons-material/Person';
 import {respondToFriendRequest} from '../../services/api';
 
 const FriendRequests = ({open, onClose, friendRequests, onRequestHandled}) => {
+    const pendingRequests = friendRequests.filter(request => request.Status === 2);
+    const sentRequests = friendRequests.filter(request => request.Status === 1);
+
     const handleAccept = async (peerId) => {
         try {
             await respondToFriendRequest(peerId, true);
@@ -57,82 +60,121 @@ const FriendRequests = ({open, onClose, friendRequests, onRequestHandled}) => {
         });
     };
 
+    const renderRequestItem = (request, index, isLastItem, isPending) => (
+        <React.Fragment key={request.PeerID}>
+            <ListItem sx={{py: 2}}>
+                <Avatar sx={{bgcolor: 'primary.main', mr: 2}}>
+                    {request.PeerID.charAt(0).toUpperCase()}
+                </Avatar>
+                <ListItemText
+                    primary={request.DisplayName || formatPeerId(request.PeerID)}
+                    secondary={
+                        <span>
+                            <Typography variant="caption" color="text.secondary" component="span">
+                                {formatPeerId(request.PeerID)}
+                            </Typography>
+                            {request.RequestedAt && request.RequestedAt !== "0001-01-01T00:00:00Z" && (
+                                <Typography variant="caption" color="text.secondary"
+                                            component="span" sx={{display: 'block'}}>
+                                    {isPending ? "Received: " : "Sent: "}{formatDate(request.RequestedAt)}
+                                </Typography>
+                            )}
+                        </span>
+                    }
+                />
+                {isPending && (
+                    <ListItemSecondaryAction>
+                        <Box sx={{display: 'flex', gap: 1}}>
+                            <IconButton
+                                color="success"
+                                onClick={() => handleAccept(request.PeerID)}
+                                size="small"
+                                sx={{
+                                    bgcolor: 'success.light',
+                                    '&:hover': {bgcolor: 'success.main'}
+                                }}
+                            >
+                                <CheckIcon/>
+                            </IconButton>
+                            <IconButton
+                                color="error"
+                                onClick={() => handleReject(request.PeerID)}
+                                size="small"
+                                sx={{
+                                    bgcolor: 'error.light',
+                                    '&:hover': {bgcolor: 'error.main'}
+                                }}
+                            >
+                                <CloseIcon/>
+                            </IconButton>
+                        </Box>
+                    </ListItemSecondaryAction>
+                )}
+            </ListItem>
+            {!isLastItem && <Divider/>}
+        </React.Fragment>
+    );
+
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
             <DialogTitle>
                 <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
                     <PersonIcon color="primary"/>
                     Friend Requests
-                    {friendRequests.length > 0 && (
+                    {(pendingRequests.length + sentRequests.length) > 0 && (
                         <Typography variant="caption" color="text.secondary">
-                            ({friendRequests.length})
+                            ({pendingRequests.length + sentRequests.length})
                         </Typography>
                     )}
                 </Box>
             </DialogTitle>
 
             <DialogContent sx={{p: 0}}>
-                {friendRequests.length === 0 ? (
+                {pendingRequests.length === 0 && sentRequests.length === 0 ? (
                     <Box sx={{p: 3, textAlign: 'center'}}>
                         <Typography variant="body2" color="text.secondary">
                             No pending friend requests
                         </Typography>
                     </Box>
                 ) : (
-                    <List>
-                        {friendRequests.map((request, index) => (
-                            <React.Fragment key={request.PeerID}>
-                                <ListItem sx={{py: 2}}>
-                                    <Avatar sx={{bgcolor: 'primary.main', mr: 2}}>
-                                        {request.PeerID.charAt(0).toUpperCase()}
-                                    </Avatar>
-                                    <ListItemText
-                                        primary={request.DisplayName || formatPeerId(request.PeerID)}
-                                        secondary={
-                                            <span>
-                                                <Typography variant="caption" color="text.secondary" component="span">
-                                                    {formatPeerId(request.PeerID)}
-                                                </Typography>
-                                                {request.RequestedAt && request.RequestedAt !== "0001-01-01T00:00:00Z" && (
-                                                    <Typography variant="caption" color="text.secondary"
-                                                                component="span" sx={{display: 'block'}}>
-                                                        Requested: {formatDate(request.RequestedAt)}
-                                                    </Typography>
-                                                )}
-                                            </span>
-                                        }
-                                    />
-                                    <ListItemSecondaryAction>
-                                        <Box sx={{display: 'flex', gap: 1}}>
-                                            <IconButton
-                                                color="success"
-                                                onClick={() => handleAccept(request.PeerID)}
-                                                size="small"
-                                                sx={{
-                                                    bgcolor: 'success.light',
-                                                    '&:hover': {bgcolor: 'success.main'}
-                                                }}
-                                            >
-                                                <CheckIcon/>
-                                            </IconButton>
-                                            <IconButton
-                                                color="error"
-                                                onClick={() => handleReject(request.PeerID)}
-                                                size="small"
-                                                sx={{
-                                                    bgcolor: 'error.light',
-                                                    '&:hover': {bgcolor: 'error.main'}
-                                                }}
-                                            >
-                                                <CloseIcon/>
-                                            </IconButton>
-                                        </Box>
-                                    </ListItemSecondaryAction>
-                                </ListItem>
-                                {index < friendRequests.length - 1 && <Divider/>}
-                            </React.Fragment>
-                        ))}
-                    </List>
+                    <>
+                        {pendingRequests.length > 0 && (
+                            <>
+                                <Typography variant="subtitle2" sx={{p: 2, bgcolor: 'background.paper'}}>
+                                    Pending Approval ({pendingRequests.length})
+                                </Typography>
+                                <List>
+                                    {pendingRequests.map((request, index) => (
+                                        renderRequestItem(
+                                            request,
+                                            index,
+                                            index === pendingRequests.length - 1,
+                                            true
+                                        )
+                                    ))}
+                                </List>
+                            </>
+                        )}
+
+                        {sentRequests.length > 0 && (
+                            <>
+                                {pendingRequests.length > 0 && <Divider />}
+                                <Typography variant="subtitle2" sx={{p: 2, bgcolor: 'background.paper'}}>
+                                    Sent Requests ({sentRequests.length})
+                                </Typography>
+                                <List>
+                                    {sentRequests.map((request, index) => (
+                                        renderRequestItem(
+                                            request,
+                                            index,
+                                            index === sentRequests.length - 1,
+                                            false
+                                        )
+                                    ))}
+                                </List>
+                            </>
+                        )}
+                    </>
                 )}
             </DialogContent>
 
