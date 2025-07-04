@@ -186,6 +186,7 @@ const Sidebar = ({refreshTrigger = 0}) => {
                             <ListItem
                                 button
                                 key={friend.PeerID}
+                                onClick={() => onSelectFriend(friend)} // Add this line
                                 sx={{
                                     borderRadius: 1,
                                     mb: 0.5,
@@ -197,7 +198,7 @@ const Sidebar = ({refreshTrigger = 0}) => {
                                     },
                                 }}
                             >
-                                <Badge
+                            <Badge
                                     color={friend.IsOnline ? 'success' : 'error'}
                                     variant="dot"
                                     anchorOrigin={{

@@ -1,221 +1,212 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
+// src/components/chat/ChatPage.jsx
+import React, { useState, useEffect, useRef } from 'react';
 import {
-    AppBar,
-    Avatar,
     Box,
-    CircularProgress,
-    Container,
-    Drawer,
-    IconButton,
-    Toolbar,
     Typography,
-    useMediaQuery,
-    useTheme
+    TextField,
+    IconButton,
+    Paper,
+    Divider,
+    Container,
+    Grid,
 } from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import CloseIcon from '@mui/icons-material/Close';
-import ChatMessage from './ChatMessage';
-import MessageInput from './MessageInput';
+import SendIcon from '@mui/icons-material/Send';
 import Sidebar from '../sidebar/Sidebar';
-import {DAEMON_STATES, SAMPLE_MESSAGES} from '../utils/constants';
-import {checkStatus} from "../../services/api.js";
-import chatIcon from '../../../public/icon.svg';
+import websocketService from '../../services/websocket';
+import { getFriends } from '../../services/api';
 
-function ChatPage() {
-    const navigate = useNavigate();
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-    const [status, setStatus] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [messages, setMessages] = useState(SAMPLE_MESSAGES);
-    const [newMessage, setNewMessage] = useState('');
-    const [drawerOpen, setDrawerOpen] = useState(!isMobile);
+const ChatPage = () => {
+    const [message, setMessage] = useState('');
+    const [messages, setMessages] = useState([]);
+    const [friends, setFriends] = useState([]);
+    const [selectedFriend, setSelectedFriend] = useState(null);
+    const [ownPeerId, setOwnPeerId] = useState('');
     const messagesEndRef = useRef(null);
-    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-    const refreshAllData = useCallback(async () => {
-        try {
-            if (!document.hidden && newMessage.trim() === '') {
-                const statusResponse = await checkStatus();
-                setStatus(statusResponse.data.state);
-
-                if (statusResponse.data.state !== DAEMON_STATES.RUNNING) {
-                    navigate('/login');
-                    return;
-                }
-
-                setRefreshTrigger(prev => prev + 1);
-            }
-        } catch (err) {
-            console.error('Data refresh failed:', err);
-            if (err.response?.status === 401) {
-                navigate('/login');
-            }
-        }
-    }, [newMessage, navigate]);
-
+    // Connect to WebSocket when component mounts
     useEffect(() => {
-        const verifyStatus = async () => {
-            try {
-                const response = await checkStatus();
-                setStatus(response.data.state);
+        websocketService.connect();
 
-                if (response.data.state !== DAEMON_STATES.RUNNING) {
-                    navigate('/login');
+        // Add message listener
+        const removeListener = websocketService.addMessageListener((data) => {
+            if (data.type === 'DIRECT_MESSAGE') {
+                const senderPeerId = data.payload.sender_peer_id;
+                // Only process the message if it's from the selected friend
+                // or if we're the sender (echo from server)
+                const isSenderSelected = selectedFriend && senderPeerId === selectedFriend.PeerID;
+                const isFromSelf = senderPeerId === ownPeerId;
+
+                if (isSenderSelected || isFromSelf) {
+                    // Check if this is our own message being echoed back
+                    if (isFromSelf) {
+                        // Don't add our own messages when they come back from the server
+                        // They were already added when we sent them
+                        return;
+                    }
+
+                    const newMessage = {
+                        sender_peer_id: senderPeerId,
+                        message: data.payload.message,
+                        timestamp: new Date().toISOString(),
+                        isOutgoing: false
+                    };
+
+                    setMessages(prev => [...prev, newMessage]);
                 }
-                setLoading(false);
-            } catch (err) {
-                navigate('/login');
+            }
+        });
+
+        // Load friends
+        const loadFriends = async () => {
+            try {
+                const response = await getFriends();
+                if (response.data) {
+                    setFriends(response.data);
+                    // You might want to select the first friend by default
+                    if (response.data.length > 0 && !selectedFriend) {
+                        setSelectedFriend(response.data[0]);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load friends:', error);
             }
         };
 
-        verifyStatus();
-    }, [navigate]);
+        loadFriends();
 
+        // TODO: Fetch own peer ID from an API or context
+        // For now, let's assume it's stored in localStorage or similar
+        setOwnPeerId(localStorage.getItem('peerID') || '');
+
+        return () => {
+            removeListener();
+            websocketService.disconnect();
+        };
+    }, [selectedFriend, ownPeerId]);
+
+    // Scroll to bottom when messages change
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    // Auto-refresh every 5 seconds
-    useEffect(() => {
-        const interval = setInterval(refreshAllData, 5000);
-        return () => clearInterval(interval);
-    }, [refreshAllData]);
+    const handleSendMessage = () => {
+        if (!message.trim() || !selectedFriend) return;
 
-    const handleSendMessage = (e) => {
-        e.preventDefault();
-        if (newMessage.trim() === '') return;
+        const success = websocketService.sendMessage(selectedFriend.PeerID, message);
 
-        const newMsg = {
-            id: messages.length + 1,
-            sender: 'me',
-            text: newMessage,
-            timestamp: Date.now()
-        };
-
-        setMessages([...messages, newMsg]);
-        setNewMessage('');
+        if (success) {
+            // Add the sent message to the UI
+            const newMessage = {
+                sender_peer_id: ownPeerId,
+                message: message,
+                timestamp: new Date().toISOString(),
+                isOutgoing: true
+            };
+            setMessages(prev => [...prev, newMessage]);
+            setMessage('');
+        }
     };
 
-    const toggleDrawer = () => {
-        setDrawerOpen(!drawerOpen);
+    const formatPeerId = (peerId) => {
+        if (!peerId || peerId.length < 8) return peerId;
+        const first2 = peerId.substring(0, 2);
+        const last6 = peerId.substring(peerId.length - 6);
+        return `${first2}*${last6}`;
     };
 
-    const drawerWidth = 240;
-
-    if (loading) {
-        return (
-            <Container sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'}}>
-                <Box sx={{textAlign: 'center'}}>
-                    <CircularProgress color="primary" size={60} thickness={4}/>
-                    <Typography variant="h6" color="primary" sx={{mt: 2}}>
-                        Loading Chat...
-                    </Typography>
-                </Box>
-            </Container>
-        );
-    }
+    const getDisplayName = (friend) => {
+        return friend?.display_name || formatPeerId(friend?.PeerID);
+    };
 
     return (
-        <Box sx={{display: 'flex', height: '100vh'}}>
-            {isMobile && (
-                <Drawer
-                    variant="temporary"
-                    open={drawerOpen}
-                    onClose={toggleDrawer}
-                    sx={{
-                        width: drawerWidth,
-                        flexShrink: 0,
-                        '& .MuiDrawer-paper': {
-                            width: drawerWidth,
-                            boxSizing: 'border-box',
-                            bgcolor: 'background.default',
-                        },
-                    }}
-                >
-                    <Box sx={{display: 'flex', justifyContent: 'flex-end', p: 1}}>
-                        <IconButton onClick={toggleDrawer}>
-                            <CloseIcon/>
-                        </IconButton>
-                    </Box>
-                    <Sidebar refreshTrigger={refreshTrigger}/>
-                </Drawer>
-            )}
+        <Container maxWidth="xl" sx={{ height: '100vh', display: 'flex', p: 2 }}>
+            <Grid container spacing={2} sx={{ height: '100%' }}>
+                <Grid item xs={3} sx={{ height: '100%' }}>
+                    <Paper sx={{ height: '100%', overflowY: 'auto' }}>
+                        <Sidebar onSelectFriend={setSelectedFriend} />
+                    </Paper>
+                </Grid>
+                <Grid item xs={9} sx={{ height: '100%' }}>
+                    <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        {selectedFriend ? (
+                            <>
+                                <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}>
+                                    <Typography variant="h6">
+                                        {getDisplayName(selectedFriend)}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        {selectedFriend.IsOnline ? 'Online' : 'Offline'}
+                                    </Typography>
+                                </Box>
 
-            {!isMobile && (
-                <Drawer
-                    variant="permanent"
-                    open={drawerOpen}
-                    sx={{
-                        width: drawerWidth,
-                        flexShrink: 0,
-                        '& .MuiDrawer-paper': {
-                            width: drawerWidth,
-                            boxSizing: 'border-box',
-                            bgcolor: 'background.default',
-                            borderRight: '1px solid rgba(233, 30, 99, 0.12)',
-                        },
-                    }}
-                >
-                    <Sidebar refreshTrigger={refreshTrigger}/>
-                </Drawer>
-            )}
+                                <Box sx={{ flexGrow: 1, p: 2, overflowY: 'auto' }}>
+                                    {messages.map((msg, index) => (
+                                        <Box
+                                            key={index}
+                                            sx={{
+                                                display: 'flex',
+                                                justifyContent: msg.isOutgoing ? 'flex-end' : 'flex-start',
+                                                mb: 2
+                                            }}
+                                        >
+                                            <Paper
+                                                elevation={1}
+                                                sx={{
+                                                    p: 2,
+                                                    maxWidth: '70%',
+                                                    bgcolor: msg.isOutgoing ? 'primary.light' : 'grey.100',
+                                                    borderRadius: 2
+                                                }}
+                                            >
+                                                <Typography variant="body1">{msg.message}</Typography>
+                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </Typography>
+                                            </Paper>
+                                        </Box>
+                                    ))}
+                                    <div ref={messagesEndRef} />
+                                </Box>
 
-            <Box sx={{flexGrow: 1, display: 'flex', flexDirection: 'column', height: '100%'}}>
-                <AppBar position="static" color="primary" elevation={0}>
-                    <Toolbar>
-                        {isMobile && (
-                            <IconButton
-                                color="inherit"
-                                aria-label="open drawer"
-                                edge="start"
-                                onClick={toggleDrawer}
-                                sx={{mr: 2}}
-                            >
-                                <MenuIcon/>
-                            </IconButton>
+                                <Divider />
+
+                                <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
+                                    <TextField
+                                        fullWidth
+                                        variant="outlined"
+                                        placeholder="Type a message..."
+                                        value={message}
+                                        onChange={(e) => setMessage(e.target.value)}
+                                        onKeyPress={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                handleSendMessage();
+                                            }
+                                        }}
+                                        size="small"
+                                    />
+                                    <IconButton
+                                        color="primary"
+                                        onClick={handleSendMessage}
+                                        disabled={!message.trim()}
+                                        sx={{ ml: 1 }}
+                                    >
+                                        <SendIcon />
+                                    </IconButton>
+                                </Box>
+                            </>
+                        ) : (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                                <Typography variant="h6" color="text.secondary">
+                                    Select a friend to start chatting
+                                </Typography>
+                            </Box>
                         )}
-                        <Avatar sx={{
-                            bgcolor: 'primary.main',
-                            ml: -1,
-                            mr: 0.5
-                        }}>
-                            <img src={chatIcon} alt="Chat Icon" style={{width: '60%', height: '60%'}}/>
-                        </Avatar>
-                        <Typography variant="h6" component="div" sx={{flexGrow: 1}}>
-                            P2P Chat
-                        </Typography>
-                    </Toolbar>
-                </AppBar>
-
-                <Box
-                    sx={{
-                        flexGrow: 1,
-                        bgcolor: 'background.default',
-                        p: 2,
-                        overflowY: 'auto',
-                        display: 'flex',
-                        flexDirection: 'column',
-                    }}
-                >
-                    {messages.map((message) => (
-                        <ChatMessage
-                            key={message.id}
-                            message={message}
-                        />
-                    ))}
-                    <div ref={messagesEndRef}/>
-                </Box>
-
-                <MessageInput
-                    newMessage={newMessage}
-                    setNewMessage={setNewMessage}
-                    handleSendMessage={handleSendMessage}
-                />
-            </Box>
-        </Box>
+                    </Paper>
+                </Grid>
+            </Grid>
+        </Container>
     );
-}
+};
 
 export default ChatPage;

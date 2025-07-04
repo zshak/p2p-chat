@@ -67,6 +67,7 @@ function App() {
                 <Routes>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/chat" element={<ChatPage />} />
+                    <Route path="/chat" element={<ChatPage />} />
                     <Route path="/" element={<Navigate to="/login" />} />
                 </Routes>
             </Router>

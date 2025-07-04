@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:port1": "VITE_BACKEND_API_BASE_URL=127.0.0.1:59578 vite --port 5173",
+    "dev:port2": "VITE_BACKEND_API_BASE_URL=127.0.0.1:59579 vite --port 5174",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
