@@ -148,7 +148,7 @@ func (s *Service) handleIncomingMessages(sub *pubsub.Subscription, groupId strin
 		mes := events.GroupChatMessage{
 			GroupId:      groupId,
 			Message:      message.Message,
-			SenderPeerId: (*s.appState.Node).ID().String(),
+			SenderPeerId: sender.String(),
 			Time:         time.Now(),
 		}
 		s.eventBus.PublishAsync(events.GroupChatMessageReceivedEvent{Message: mes})

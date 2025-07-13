@@ -21,4 +21,9 @@ export const respondToFriendRequest = (peer_id, is_accepted) => api.patch('/prof
 export const getFriends = () => api.get('/profile/friends');
 export const getFriendRequests = () => api.get('/profile/friendRequests');
 
+// Group chat endpoints
+export const getGroupChats = () => api.get('/group-chats');
+export const getGroupChatMessages = (group_id) => api.post('/group-chat/messages', { group_id });
+export const createGroupChat = (member_peers, name) => api.post('/group-chat', { member_peers, name });
+
 export default api;

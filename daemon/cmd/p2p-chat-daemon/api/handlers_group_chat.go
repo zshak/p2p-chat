@@ -60,7 +60,7 @@ func (h *ApiHandler) handleSendGroupMessage(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *ApiHandler) handleGetGroupMessages(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}

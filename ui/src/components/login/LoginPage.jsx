@@ -12,6 +12,7 @@ import LoadingScreen from './LoadingScreen';
 import LoginForm from './LoginForm';
 import RegisterForm from '../register/RegisterForm';
 import { LOGIN_STEPS, LOGIN_STEP_MESSAGES, DAEMON_STATES } from '../utils/constants';
+import {setPeerId} from '../utils/userStore.js'
 
 function LoginPage() {
     const [daemonState, setDaemonState] = useState(null);
@@ -30,11 +31,14 @@ function LoginPage() {
 
     const checkDaemonStatus = async () => {
         try {
+            console.log('check daemon status');
             setLoading(true);
             const response = await checkStatus();
             setDaemonState(response.data.state);
 
             if (response.data.state === DAEMON_STATES.RUNNING) {
+                setPeerId(response.data.peer_id)
+                console.log('set peer id: ' + response.data.peer_id);
                 navigate('/chat');
             }
 
@@ -70,6 +74,7 @@ function LoginPage() {
 
                 // Check if state is "Running"
                 if (state === DAEMON_STATES.RUNNING) {
+                    setPeerId(response.data.peer_id)
                     clearInterval(pollInterval);
                     setLoginStep(LOGIN_STEPS.SUCCESS);
 

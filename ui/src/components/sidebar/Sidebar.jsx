@@ -1,3 +1,4 @@
+// src/components/sidebar/Sidebar.jsx
 import React, {useCallback, useEffect, useState} from 'react';
 import {
     Avatar,
@@ -17,18 +18,24 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import GroupIcon from '@mui/icons-material/Group'; // Import GroupIcon
+import AddBoxIcon from '@mui/icons-material/AddBox'; // Import AddBoxIcon
 import {useNavigate} from 'react-router-dom';
-import {getFriendRequests, getFriends} from '../../services/api';
+import {getFriendRequests, getFriends, getGroupChats} from '../../services/api'; // Import getGroupChats
 import AddFriend from '../friends/AddFriend';
 import FriendRequests from '../friends/FriendRequests';
+import CreateGroupChat from '../groupchat/CreateGroupChat.jsx'; // Import CreateGroupChat
 
-const Sidebar = ({refreshTrigger = 0}) => {
+const Sidebar = ({refreshTrigger = 0, onSelectChat}) => { // Add onSelectChat prop
     const navigate = useNavigate();
     const [friends, setFriends] = useState([]);
+    const [groupChats, setGroupChats] = useState([]); // State for group chats
     const [friendRequests, setFriendRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [addFriendOpen, setAddFriendOpen] = useState(false);
     const [friendRequestsOpen, setFriendRequestsOpen] = useState(false);
+    const [createGroupChatOpen, setCreateGroupChatOpen] = useState(false); // State for create group modal
+
 
     const formatPeerId = (peerId) => {
         if (!peerId || peerId.length < 8) return peerId;
@@ -37,21 +44,27 @@ const Sidebar = ({refreshTrigger = 0}) => {
         return `${first2}*${last6}`;
     };
 
-    const getDisplayName = (friend) => {
-        return friend.display_name || formatPeerId(friend.PeerID);
+    const getDisplayName = (chat) => {
+        if (chat.PeerID) { // It's a friend
+            return chat.display_name || formatPeerId(chat.PeerID);
+        } else if (chat.group_id) { // It's a group chat
+            return chat.name || `Group (${chat.members.length})`; // Use group name if available, otherwise a default
+        }
+        return 'Unknown Chat';
     };
 
-    const getInitial = (friend) => {
-        const displayName = getDisplayName(friend);
+
+    const getInitial = (chat) => {
+        const displayName = getDisplayName(chat);
         return displayName.charAt(0).toUpperCase();
     };
 
-    const loadFriendsData = useCallback(async () => {
+    const loadChatData = useCallback(async () => { // Rename to loadChatData
         try {
-
-            const [friendsResponse, requestsResponse] = await Promise.all([
+            const [friendsResponse, requestsResponse, groupChatsResponse] = await Promise.all([ // Fetch group chats
                 getFriends(),
-                getFriendRequests()
+                getFriendRequests(),
+                getGroupChats()
             ]);
 
             const validFriends = (friendsResponse.data || []).filter(friend =>
@@ -60,12 +73,14 @@ const Sidebar = ({refreshTrigger = 0}) => {
 
             setFriends(validFriends);
             setFriendRequests(requestsResponse.data || []);
+            setGroupChats(groupChatsResponse.data || []); // Set group chats
 
 
         } catch (error) {
-            console.error('Failed to load friends data:', error);
+            console.error('Failed to load chat data:', error);
             setFriends([]);
             setFriendRequests([]);
+            setGroupChats([]);
         } finally {
             setLoading(false);
         }
@@ -73,35 +88,47 @@ const Sidebar = ({refreshTrigger = 0}) => {
 
     // Initial load
     useEffect(() => {
-        loadFriendsData();
-    }, [loadFriendsData]);
+        loadChatData();
+    }, [loadChatData]);
 
     useEffect(() => {
         if (refreshTrigger > 0) {
-            loadFriendsData();
+            loadChatData();
         }
-    }, [refreshTrigger, loadFriendsData]);
+    }, [refreshTrigger, loadChatData]);
 
     useEffect(() => {
         const interval = setInterval(() => {
             if (!document.hidden) {
-                loadFriendsData();
+                loadChatData();
             }
         }, 10000);
 
         return () => clearInterval(interval);
-    }, [loadFriendsData]);
+    }, [loadChatData]);
 
     const handleFriendRequestSent = () => {
-        loadFriendsData();
+        loadChatData();
     };
 
     const handleRequestHandled = (peerId, isAccepted) => {
         setFriendRequests(prev => prev.filter(req => req.PeerID !== peerId));
         if (isAccepted) {
-            loadFriendsData();
+            loadChatData();
         }
     };
+
+    const handleGroupChatCreated = () => {
+        loadChatData(); // Refresh the list after creating a group
+    };
+
+    // Handle selecting either a friend or a group chat
+    const handleSelectChat = (chat, type) => {
+        if (onSelectChat) {
+            onSelectChat({ ...chat, type }); // Pass the chat object and type ('friend' or 'group')
+        }
+    };
+
 
     return (
         <>
@@ -124,10 +151,10 @@ const Sidebar = ({refreshTrigger = 0}) => {
                     <PersonIcon fontSize="large"/>
                 </Avatar>
                 <Typography variant="h6" color="primary.dark">
-                    Your Name
+                    Your Name {/* TODO: Replace with actual user name */}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                    Online
+                    Online {/* TODO: Replace with actual online status */}
                 </Typography>
             </Box>
 
@@ -163,12 +190,71 @@ const Sidebar = ({refreshTrigger = 0}) => {
                         )}
                     </IconButton>
                 </Tooltip>
+                <Tooltip title="Create Group Chat"> {/* Add Create Group Chat button */}
+                    <IconButton
+                        color="primary"
+                        onClick={() => setCreateGroupChatOpen(true)}
+                        sx={{flex: 1}}
+                    >
+                        <AddBoxIcon/>
+                    </IconButton>
+                </Tooltip>
             </Box>
 
             <Divider/>
 
-            <Box sx={{p: 2, flexGrow: 1}}>
+            <Box sx={{p: 2, flexGrow: 1, overflowY: 'auto'}}> {/* Make this section scrollable */}
                 <Typography variant="subtitle2" color="text.secondary" sx={{pl: 1, mb: 1}}>
+                    GROUP CHATS ({groupChats.length}) {/* Group Chats Section */}
+                </Typography>
+                {loading ? (
+                    <Typography variant="body2" color="text.secondary" sx={{pl: 1}}>
+                        Loading groups...
+                    </Typography>
+                ) : groupChats.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary" sx={{pl: 1}}>
+                        No group chats yet.
+                    </Typography>
+                ) : (
+                    <List>
+                        {groupChats.map((groupChat) => (
+                            <ListItem
+                                button
+                                key={groupChat.group_id}
+                                onClick={() => handleSelectChat(groupChat, 'group')} // Select group chat
+                                sx={{
+                                    borderRadius: 1,
+                                    mb: 0.5,
+                                    '&:hover': {
+                                        bgcolor: 'primary.light',
+                                        '& .MuiTypography-root': {
+                                            color: 'primary.contrastText',
+                                        },
+                                    },
+                                }}
+                            >
+                                <Avatar sx={{bgcolor: 'info.main', mr: 2}}> {/* Use a different color for group icons */}
+                                    <GroupIcon/>
+                                </Avatar>
+                                <ListItemText
+                                    primary={getDisplayName(groupChat)}
+                                    secondary={`${groupChat.members.length} members`}
+                                    primaryTypographyProps={{
+                                        noWrap: true,
+                                        fontSize: 14,
+                                        fontWeight: 500
+                                    }}
+                                    secondaryTypographyProps={{
+                                        noWrap: true,
+                                        fontSize: 12
+                                    }}
+                                />
+                            </ListItem>
+                        ))}
+                    </List>
+                )}
+
+                <Typography variant="subtitle2" color="text.secondary" sx={{pl: 1, mb: 1, mt: 2}}> {/* Friends Section */}
                     FRIENDS ({friends.length})
                 </Typography>
 
@@ -186,7 +272,7 @@ const Sidebar = ({refreshTrigger = 0}) => {
                             <ListItem
                                 button
                                 key={friend.PeerID}
-                                onClick={() => onSelectFriend(friend)} // Add this line
+                                onClick={() => handleSelectChat(friend, 'friend')} // Select friend
                                 sx={{
                                     borderRadius: 1,
                                     mb: 0.5,
@@ -198,7 +284,7 @@ const Sidebar = ({refreshTrigger = 0}) => {
                                     },
                                 }}
                             >
-                            <Badge
+                                <Badge
                                     color={friend.IsOnline ? 'success' : 'error'}
                                     variant="dot"
                                     anchorOrigin={{
@@ -239,7 +325,7 @@ const Sidebar = ({refreshTrigger = 0}) => {
                     startIcon={<SettingsIcon/>}
                     sx={{mb: 1}}
                 >
-                    Settings
+                    Settings {/* TODO: Implement Settings Page */}
                 </Button>
                 <Button
                     fullWidth
@@ -263,6 +349,13 @@ const Sidebar = ({refreshTrigger = 0}) => {
                 onClose={() => setFriendRequestsOpen(false)}
                 friendRequests={friendRequests}
                 onRequestHandled={handleRequestHandled}
+            />
+
+            <CreateGroupChat // Add CreateGroupChat modal
+                open={createGroupChatOpen}
+                onClose={() => setCreateGroupChatOpen(false)}
+                onCreateGroupChat={handleGroupChatCreated}
+                friends={friends} // Pass friends list to select members
             />
         </>
     );

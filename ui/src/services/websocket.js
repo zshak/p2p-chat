@@ -1,3 +1,4 @@
+// src/services/websocket.js
 const API_BASE_URL = import.meta.env.VITE_BACKEND_API_BASE_URL  || '127.0.0.1:59578';
 
 class WebSocketService {
@@ -38,7 +39,7 @@ class WebSocketService {
         };
     }
 
-    sendMessage(targetPeerId, message) {
+    sendMessage(targetPeerId, message) { // for Direct Messages
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket not connected');
             return false;
@@ -55,6 +56,25 @@ class WebSocketService {
         this.socket.send(JSON.stringify(payload));
         return true;
     }
+
+    sendGroupMessage(groupId, message) { // for Group Messages
+        if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+            console.error('WebSocket not connected');
+            return false;
+        }
+
+        const payload = {
+            type: 'GROUP_MESSAGE',
+            payload: {
+                group_id: groupId,
+                message: message
+            }
+        };
+
+        this.socket.send(JSON.stringify(payload));
+        return true;
+    }
+
 
     addMessageListener(callback) {
         this.messageCallbacks.push(callback);

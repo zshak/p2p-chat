@@ -2,6 +2,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import LoginPage from './components/login/LoginPage.jsx';
 import ChatPage from './components/chat/ChatPage';
+import { checkStatus } from './services/api';
+import { setPeerId } from './components/utils/userStore.js';
 
 const theme = createTheme({
     palette: {
@@ -60,6 +62,18 @@ const theme = createTheme({
 });
 
 function App() {
+    const verifyStatus = async () => {
+        try {
+            const response = await checkStatus();
+            setPeerId(response.data.peer_id)
+            console.log('oeeeee: ' + response.data.peer_id);
+        } catch (error) {
+            console.error('Failed to check daemon status:', error);
+        }
+    };
+
+    verifyStatus();
+
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />
