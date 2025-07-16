@@ -75,7 +75,11 @@ func (c *Consumer) HandleMessageReceived(message types.ChatMessage) {
 		Type: WsMsgTypeDirectMessage,
 	}
 
-	payload := WsDirectMessagePayload{SenderPeerId: message.SenderPeerID, Message: message.Content}
+	payload := WsDirectMessagePayload{
+		TargetPeerId: message.RecipientPeerId,
+		SenderPeerId: message.SenderPeerID,
+		Message:      message.Content,
+	}
 	payloadBytes, err := json.Marshal(payload)
 
 	if err != nil {

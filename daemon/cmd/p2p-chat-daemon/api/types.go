@@ -81,6 +81,7 @@ type WsMessage struct {
 
 // WsDirectMessagePayload for when a new direct message is received
 type WsDirectMessagePayload struct {
+	TargetPeerId string `json:"target_peer_id"`
 	SenderPeerId string `json:"sender_peer_id"`
 	Message      string `json:"message"`
 }
