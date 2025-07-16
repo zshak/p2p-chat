@@ -14,8 +14,8 @@ import {
 import SendIcon from '@mui/icons-material/Send';
 import Sidebar from '../sidebar/Sidebar';
 import websocketService from '../../services/websocket';
-import { getFriends, getGroupChatMessages } from '../../services/api';
-import { getPeerId } from '../utils/userStore'; // Correct path to userStore
+import { getFriends, getGroupChatMessages, getChatMessages } from '../../services/api';
+import { getPeerId } from '../utils/userStore';
 import ChatMessage from "./ChatMessage";
 
 // Define initial number of messages to display and how many to load each time
@@ -52,7 +52,6 @@ const ChatPage = () => {
             // If it's not set yet, we can't determine if message is outgoing or from correct chat
             if (!ownPeerId) {
                 console.warn("Received WebSocket message before ownPeerId was set. Message:", data);
-                // In a production app, you might want to buffer these or re-initialize based on data if possible
                 return;
             }
 
@@ -70,13 +69,12 @@ const ChatPage = () => {
                     chatId = group_id;
                 }
 
-                // *** REMOVED: if (sender_peer_id === ownPeerId) { return; } ***
-                // We now want to process our own echoed messages from the server
-
                 const newMessage = {
                     SenderPeerId: sender_peer_id,
                     Message: chatMessageText,
-                    Time: data.payload.Time || new Date().toISOString(), // Prefer server timestamp if available, otherwise use current
+                    // Use server timestamp if available, otherwise current.
+                    // For direct messages, the backend provides "Time", for group it's implicit (or could be in payload if server sends).
+                    Time: data.payload.Time || new Date().toISOString(),
                     isOutgoing: sender_peer_id === ownPeerId, // Determine if it's our message
                     chatId: chatId,
                 };
@@ -85,7 +83,6 @@ const ChatPage = () => {
 
                 setMessagesByChat(prev => {
                     const chatMessages = prev[chatId] || [];
-                    // Add the new message to the end
                     const updatedMessages = [...chatMessages, newMessage];
                     return {
                         ...prev,
@@ -94,18 +91,15 @@ const ChatPage = () => {
                 });
 
                 // If the new message is for the currently selected chat AND the user is near the bottom, scroll down
-                // This applies to both incoming messages from others and our own echoed messages.
                 if (selectedChat && ( (selectedChat.type === 'friend' && selectedChat.PeerID === chatId) || (selectedChat.type === 'group' && selectedChat.group_id === chatId) ) ) {
                     const container = messagesContainerRef.current;
                     if (container) {
-                        // Check if the user is scrolled near the bottom (e.g., last 100 pixels)
                         const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
                         if (isAtBottom) {
                             setTimeout(() => {
                                 messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
                             }, 50);
                         }
-                        // If not at bottom, we don't force a scroll, letting user read history
                     }
                 }
             }
@@ -126,13 +120,12 @@ const ChatPage = () => {
         loadFriends();
 
         // Fetch own peer ID
-        setOwnPeerId(getPeerId()); // This runs once on mount
+        setOwnPeerId(getPeerId());
 
         return () => {
             removeListener();
-            // websocketService.disconnect(); // Manage WebSocket connection lifecycle carefully
         };
-    }, [ownPeerId, selectedChat]); // Added selectedChat to dependencies for scroll logic to react to chat changes
+    }, [ownPeerId, selectedChat]);
 
 
     // Fetch messages when selectedChat changes
@@ -141,11 +134,9 @@ const ChatPage = () => {
             if (selectedChat) {
                 const chatId = selectedChat.type === 'friend' ? selectedChat.PeerID : selectedChat.group_id;
 
-                // Reset displayed count and loading states for the new chat
                 setDisplayedMessageCount(INITIAL_DISPLAY_COUNT);
                 setLoadingOlderMessages(false);
                 setLoadingInitialMessages(true);
-
 
                 try {
                     let fetchedMsgs = [];
@@ -162,11 +153,21 @@ const ChatPage = () => {
                             console.log(`Fetched ${fetchedMsgs.length} historical messages for group ${chatId}`);
                         }
                     } else if (selectedChat.type === 'friend') {
-                        // TODO: Implement fetching historical direct messages if API exists
-                        console.warn("Fetching historical direct messages is not implemented yet.");
+                        // Fetch historical direct messages ===
+                        const response = await getChatMessages(selectedChat.PeerID); // Pass the friend's peer_id
+                        if (response.data && response.data.Messages) {
+                            fetchedMsgs = response.data.Messages.map(msg => ({
+                                // For direct messages, determine SenderPeerId based on IsOutgoing
+                                SenderPeerId: msg.IsOutgoing ? ownPeerId : selectedChat.PeerID,
+                                Message: msg.Message,
+                                Time: msg.SendTime,
+                                isOutgoing: msg.IsOutgoing,
+                                chatId: chatId,
+                            }));
+                            console.log(`Fetched ${fetchedMsgs.length} historical messages for friend ${chatId}`);
+                        }
                     }
 
-                    // Store ALL fetched messages. The WS listener will add new ones.
                     const sortedFetchedMsgs = fetchedMsgs.sort((a, b) => new Date(a.Time).getTime() - new Date(b.Time).getTime());
 
                     setMessagesByChat(prev => ({
@@ -181,7 +182,6 @@ const ChatPage = () => {
                 } finally {
                     setLoadingInitialMessages(false);
 
-                    // Scroll to bottom after initial load/fetch
                     setTimeout(() => {
                         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
                     }, 150);
@@ -243,34 +243,24 @@ const ChatPage = () => {
         if (!message.trim() || !selectedChat) return;
 
         const messageToSend = message;
-        setMessage(''); // Clear input immediately
+        setMessage('');
 
-        // No optimistic UI update here. The message will only appear
-        // when it's echoed back via the WebSocket.
         if (selectedChat.type === 'friend') {
             websocketService.sendMessage(selectedChat.PeerID, messageToSend);
         } else if (selectedChat.type === 'group') {
             websocketService.sendGroupMessage(selectedChat.group_id, messageToSend);
         }
-
-        // We no longer manually add the message to state here.
-        // Scrolling will be handled by the WebSocket listener when the message is echoed back.
     };
 
-    // Determine messages for the currently selected chat from the state
     const currentChatId = selectedChat?.type === 'friend' ? selectedChat.PeerID : selectedChat?.group_id;
     const allMessagesForSelectedChat = messagesByChat[currentChatId] || [];
 
-    // Calculate the starting index for the slice based on the desired displayed count
     const startIndex = Math.max(0, allMessagesForSelectedChat.length - displayedMessageCount);
-    // Slice the messages to display from the beginning based on the calculated start index
     const messagesToDisplay = allMessagesForSelectedChat.slice(startIndex);
 
-    // Calculate how many older messages are not being displayed
     const olderMessagesCount = allMessagesForSelectedChat.length - messagesToDisplay.length;
 
 
-    // Pass friends list and the setSelectedChat function to Sidebar
     return (
         <Container maxWidth="xl" sx={{ height: '100vh', display: 'flex', p: 2 }}>
             <Grid container spacing={2} sx={{ height: '100%' }}>

@@ -26,4 +26,7 @@ export const getGroupChats = () => api.get('/group-chats');
 export const getGroupChatMessages = (group_id) => api.post('/group-chat/messages', { group_id });
 export const createGroupChat = (member_peers, name) => api.post('/group-chat', { member_peers, name });
 
+export const getChatMessages = (peer_id) => api.post('/chat/messages', { peer_id });
+
+
 export default api;

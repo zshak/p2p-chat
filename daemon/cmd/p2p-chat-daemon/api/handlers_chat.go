@@ -43,7 +43,7 @@ func (h *ApiHandler) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 
 // handleGetMessages handles GET requests to /chat/messages
 func (h *ApiHandler) handleGetMessages(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
