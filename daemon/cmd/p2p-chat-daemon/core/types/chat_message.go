@@ -62,6 +62,7 @@ type FriendRelationship struct {
 type GroupKey struct {
 	GroupId   string
 	Key       []byte
+	Name      string
 	CreatedAt time.Time
 }
 

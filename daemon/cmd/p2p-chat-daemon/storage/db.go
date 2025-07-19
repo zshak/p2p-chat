@@ -95,6 +95,7 @@ func (db *DB) ensureCreation() error {
 		CREATE TABLE IF NOT EXISTS group_keys (
 			group_id TEXT PRIMARY KEY NOT NULL,
 			group_key BLOB NOT NULL,
+			name TEXT NOT NULL,
 			created_at INTEGER NOT NULL
 		);
 

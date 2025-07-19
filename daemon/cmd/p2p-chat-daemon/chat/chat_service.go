@@ -249,7 +249,7 @@ func (s *Service) SendMessage(targetPeerId string, message string) error {
 func (s *Service) CreateGroup(peers []string, groupChatName string) error {
 	id := uuid.New().String()
 
-	k, e := s.groupKeyStoreService.GenerateNewKey(id)
+	k, e := s.groupKeyStoreService.GenerateNewKey(id, groupChatName)
 
 	if e != nil {
 		log.Printf("GROUP Chat API: Error generating new key: %v", e)
@@ -379,6 +379,7 @@ func (s *Service) handleGroupRequest(stream network.Stream) {
 	err = s.KeyRepository.Store(ctx, types.GroupKey{
 		GroupId:   request.Id,
 		Key:       request.Key,
+		Name:      request.Name,
 		CreatedAt: time.Now(),
 	})
 

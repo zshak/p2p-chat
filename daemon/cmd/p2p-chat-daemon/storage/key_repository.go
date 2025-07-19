@@ -34,12 +34,13 @@ func NewSQLiteKeyRepository(database *DB) (KeyRepository, error) {
 // Store saves a message, ensuring the conversation exists.
 func (r *sqliteKeyRepository) Store(ctx context.Context, key types.GroupKey) error {
 	sqlStmt := `
-		REPLACE INTO group_keys (group_id, group_key, created_at)
-		VALUES (?, ?, ?);
+		REPLACE INTO group_keys (group_id, group_key, name, created_at)
+		VALUES (?, ?, ?, ?);
 	`
 	_, err := r.db.ExecContext(ctx, sqlStmt,
 		key.GroupId,
 		key.Key,
+		key.Name,
 		time.Now().Unix(),
 	)
 
@@ -54,13 +55,14 @@ func (r *sqliteKeyRepository) Store(ctx context.Context, key types.GroupKey) err
 // GetKey retrieves the key for a group.
 // Returns sql.ErrNoRows if not found.
 func (r *sqliteKeyRepository) GetKey(ctx context.Context, groupID string) (*types.GroupKey, error) {
-	sqlStmt := `SELECT group_id, group_key, created_at FROM group_keys WHERE group_id = ?;`
+	sqlStmt := `SELECT group_id, group_key, name, created_at FROM group_keys WHERE group_id = ?;`
 	var gk types.GroupKey
 	var createdAtUnix int64
 
 	err := r.db.QueryRowContext(ctx, sqlStmt, groupID).Scan(
 		&gk.GroupId,
 		&gk.Key,
+		&gk.Name,
 		&createdAtUnix,
 	)
 	if err != nil {

@@ -35,7 +35,7 @@ func NewGroupKeyStore(keyRepo storage.KeyRepository, ctx context.Context) *Group
 
 // GenerateNewKey creates a new symmetric key for a group and stores it.
 // In a real app, this would only be done by a group admin/creator.
-func (s *GroupKeyStore) GenerateNewKey(groupID string) ([]byte, error) {
+func (s *GroupKeyStore) GenerateNewKey(groupID string, groupName string) ([]byte, error) {
 	key := make([]byte, groupKeySize)
 	if _, err := io.ReadFull(rand.Reader, key); err != nil {
 		return nil, fmt.Errorf("failed to generate group key for %s: %w", groupID, err)
@@ -44,6 +44,7 @@ func (s *GroupKeyStore) GenerateNewKey(groupID string) ([]byte, error) {
 	s.keyRepo.Store(s.ctx, types.GroupKey{
 		Key:     key,
 		GroupId: groupID,
+		Name:    groupName,
 	})
 
 	return key, nil
