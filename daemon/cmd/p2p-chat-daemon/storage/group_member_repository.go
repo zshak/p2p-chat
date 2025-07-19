@@ -19,6 +19,7 @@ type GroupMemberRepository interface {
 type GroupInfo struct {
 	GroupID string   `json:"group_id"`
 	Members []string `json:"members"`
+	Name    string   `json:"name"`
 }
 
 // --- SQLite Implementation ---
@@ -130,12 +131,32 @@ func (r *sqliteGroupMemberRepository) GetGroups(ctx context.Context) ([]GroupInf
 	// Convert the map to a slice of GroupInfo
 	var groups []GroupInfo
 	for groupID, members := range groupsMap {
+
+		name, err := r.GetGroupName(ctx, groupID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get group name for ID %s: %w", groupID, err)
+		}
 		groups = append(groups, GroupInfo{
 			GroupID: groupID,
 			Members: members,
+			Name:    name,
 		})
 	}
 
 	log.Printf("Storage: Retrieved %d groups", len(groups))
 	return groups, nil
+}
+
+// Inside your actual repository struct (e.g., type SQLRepository struct { db *sql.DB })
+func (r *sqliteGroupMemberRepository) GetGroupName(ctx context.Context, groupID string) (string, error) {
+	var name string
+	query := `SELECT name FROM group_keys WHERE group_id = $1`
+	err := r.db.QueryRowContext(ctx, query, groupID).Scan(&name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", fmt.Errorf("group name not found for ID %s", groupID)
+		}
+		return "", fmt.Errorf("database query failed for group name: %w", err)
+	}
+	return name, nil
 }

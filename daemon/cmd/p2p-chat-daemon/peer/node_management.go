@@ -84,6 +84,11 @@ func (nm *NodeManager) Initialize() (*host.Host, error) {
 	// Create libp2p node with options
 	node, err := libp2p.New(opts...)
 
+	addrs := node.Addrs()
+	for _, addr := range addrs {
+		fmt.Printf("Listening on: %s\n", addr.String())
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create libp2p host: %w", err)
 	}
