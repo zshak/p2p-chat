@@ -1,5 +1,4 @@
-// src/components/sidebar/Sidebar.jsx
-import React, {useCallback, useEffect, useState} from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     Avatar,
     Badge,
@@ -18,24 +17,23 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import NotificationsIcon from '@mui/icons-material/Notifications';
-import GroupIcon from '@mui/icons-material/Group'; // Import GroupIcon
-import AddBoxIcon from '@mui/icons-material/AddBox'; // Import AddBoxIcon
-import {useNavigate} from 'react-router-dom';
-import {getFriendRequests, getFriends, getGroupChats} from '../../services/api'; // Import getGroupChats
+import GroupIcon from '@mui/icons-material/Group';
+import AddBoxIcon from '@mui/icons-material/AddBox';
+import { useNavigate } from 'react-router-dom';
+import { getFriendRequests, getFriends, getGroupChats } from '../../services/api';
 import AddFriend from '../friends/AddFriend';
 import FriendRequests from '../friends/FriendRequests';
-import CreateGroupChat from '../groupchat/CreateGroupChat.jsx'; // Import CreateGroupChat
+import CreateGroupChat from '../groupchat/CreateGroupChat.jsx';
 
-const Sidebar = ({refreshTrigger = 0, onSelectChat}) => { // Add onSelectChat prop
+const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
     const navigate = useNavigate();
     const [friends, setFriends] = useState([]);
-    const [groupChats, setGroupChats] = useState([]); // State for group chats
+    const [groupChats, setGroupChats] = useState([]);
     const [friendRequests, setFriendRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [addFriendOpen, setAddFriendOpen] = useState(false);
     const [friendRequestsOpen, setFriendRequestsOpen] = useState(false);
-    const [createGroupChatOpen, setCreateGroupChatOpen] = useState(false); // State for create group modal
-
+    const [createGroupChatOpen, setCreateGroupChatOpen] = useState(false);
 
     const formatPeerId = (peerId) => {
         if (!peerId || peerId.length < 8) return peerId;
@@ -45,23 +43,22 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat}) => { // Add onSelectChat pr
     };
 
     const getDisplayName = (chat) => {
-        if (chat.PeerID) { // It's a friend
+        if (chat.PeerID) {
             return chat.display_name || formatPeerId(chat.PeerID);
-        } else if (chat.group_id) { // It's a group chat
-            return chat.name || `Group (${chat.members.length})`; // Use group name if available, otherwise a default
+        } else if (chat.group_id) {
+            return chat.name || `Group (${chat.members?.length || 0})`;
         }
         return 'Unknown Chat';
     };
-
 
     const getInitial = (chat) => {
         const displayName = getDisplayName(chat);
         return displayName.charAt(0).toUpperCase();
     };
 
-    const loadChatData = useCallback(async () => { // Rename to loadChatData
+    const loadChatData = useCallback(async () => {
         try {
-            const [friendsResponse, requestsResponse, groupChatsResponse] = await Promise.all([ // Fetch group chats
+            const [friendsResponse, requestsResponse, groupChatsResponse] = await Promise.all([
                 getFriends(),
                 getFriendRequests(),
                 getGroupChats()
@@ -73,9 +70,7 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat}) => { // Add onSelectChat pr
 
             setFriends(validFriends);
             setFriendRequests(requestsResponse.data || []);
-            setGroupChats(groupChatsResponse.data || []); // Set group chats
-
-
+            setGroupChats(groupChatsResponse.data || []);
         } catch (error) {
             console.error('Failed to load chat data:', error);
             setFriends([]);
@@ -86,7 +81,6 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat}) => { // Add onSelectChat pr
         }
     }, []);
 
-    // Initial load
     useEffect(() => {
         loadChatData();
     }, [loadChatData]);
@@ -119,225 +113,258 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat}) => { // Add onSelectChat pr
     };
 
     const handleGroupChatCreated = () => {
-        loadChatData(); // Refresh the list after creating a group
+        loadChatData();
     };
 
-    // Handle selecting either a friend or a group chat
     const handleSelectChat = (chat, type) => {
         if (onSelectChat) {
-            onSelectChat({ ...chat, type }); // Pass the chat object and type ('friend' or 'group')
+            onSelectChat({ ...chat, type });
         }
     };
 
-
-    return (
+    const renderChatSection = (title, items, type, emptyMessage) => (
         <>
-            <Box
+            <Typography
+                variant="subtitle2"
+                color="text.secondary"
                 sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    p: 2
+                    pl: 1,
+                    mb: 1,
+                    mt: type === 'friend' ? 2 : 0,
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5
                 }}
             >
-                <Avatar
-                    sx={{
-                        width: 80,
-                        height: 80,
-                        bgcolor: 'primary.main',
-                        mb: 1
-                    }}
-                >
-                    <PersonIcon fontSize="large"/>
-                </Avatar>
-                <Typography variant="h6" color="primary.dark">
-                    Your Name {/* TODO: Replace with actual user name */}
+                {title} ({items.length})
+            </Typography>
+
+            {loading ? (
+                <Typography variant="body2" color="text.secondary" sx={{ pl: 1, py: 1 }}>
+                    Loading {type === 'group' ? 'groups' : 'friends'}...
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                    Online {/* TODO: Replace with actual online status */}
+            ) : items.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ pl: 1, py: 1 }}>
+                    {emptyMessage}
                 </Typography>
-            </Box>
-
-            <Divider/>
-
-            <Box sx={{p: 2, display: 'flex', gap: 1}}>
-                <Tooltip title="Add Friend">
-                    <IconButton
-                        color="primary"
-                        onClick={() => setAddFriendOpen(true)}
-                        sx={{flex: 1}}
-                    >
-                        <PersonAddIcon/>
-                    </IconButton>
-                </Tooltip>
-                <Tooltip title="Friend Requests">
-                    <IconButton
-                        color="primary"
-                        onClick={() => setFriendRequestsOpen(true)}
-                        sx={{flex: 1, position: 'relative'}}
-                    >
-                        <NotificationsIcon/>
-                        {friendRequests.length > 0 && (
-                            <Badge
-                                badgeContent={friendRequests.length}
-                                color="error"
-                                sx={{
-                                    position: 'absolute',
-                                    top: 5,
-                                    right: 5
-                                }}
-                            />
-                        )}
-                    </IconButton>
-                </Tooltip>
-                <Tooltip title="Create Group Chat"> {/* Add Create Group Chat button */}
-                    <IconButton
-                        color="primary"
-                        onClick={() => setCreateGroupChatOpen(true)}
-                        sx={{flex: 1}}
-                    >
-                        <AddBoxIcon/>
-                    </IconButton>
-                </Tooltip>
-            </Box>
-
-            <Divider/>
-
-            <Box sx={{p: 2, flexGrow: 1, overflowY: 'auto'}}> {/* Make this section scrollable */}
-                <Typography variant="subtitle2" color="text.secondary" sx={{pl: 1, mb: 1}}>
-                    GROUP CHATS ({groupChats.length}) {/* Group Chats Section */}
-                </Typography>
-                {loading ? (
-                    <Typography variant="body2" color="text.secondary" sx={{pl: 1}}>
-                        Loading groups...
-                    </Typography>
-                ) : groupChats.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary" sx={{pl: 1}}>
-                        No group chats yet.
-                    </Typography>
-                ) : (
-                    <List>
-                        {groupChats.map((groupChat) => (
-                            <ListItem
-                                button
-                                key={groupChat.group_id}
-                                onClick={() => handleSelectChat(groupChat, 'group')} // Select group chat
-                                sx={{
-                                    borderRadius: 1,
-                                    mb: 0.5,
-                                    '&:hover': {
-                                        bgcolor: 'primary.light',
-                                        '& .MuiTypography-root': {
-                                            color: 'primary.contrastText',
-                                        },
+            ) : (
+                <List sx={{ py: 0 }}>
+                    {items.map((item) => (
+                        <ListItem
+                            button
+                            key={type === 'group' ? item.group_id : item.PeerID}
+                            onClick={() => handleSelectChat(item, type)}
+                            sx={{
+                                borderRadius: 1,
+                                mb: 0.5,
+                                mx: 1,
+                                transition: 'all 0.2s ease-in-out',
+                                '&:hover': {
+                                    bgcolor: 'primary.light',
+                                    '& .MuiTypography-root': {
+                                        color: 'primary.contrastText',
                                     },
-                                }}
-                            >
-                                <Avatar sx={{bgcolor: 'info.main', mr: 2}}> {/* Use a different color for group icons */}
-                                    <GroupIcon/>
+                                },
+                            }}
+                        >
+                            {type === 'group' ? (
+                                <Avatar sx={{ bgcolor: 'info.main', mr: 2, width: 40, height: 40 }}>
+                                    <GroupIcon />
                                 </Avatar>
-                                <ListItemText
-                                    primary={getDisplayName(groupChat)}
-                                    secondary={`${groupChat.members.length} members`}
-                                    primaryTypographyProps={{
-                                        noWrap: true,
-                                        fontSize: 14,
-                                        fontWeight: 500
-                                    }}
-                                    secondaryTypographyProps={{
-                                        noWrap: true,
-                                        fontSize: 12
-                                    }}
-                                />
-                            </ListItem>
-                        ))}
-                    </List>
-                )}
-
-                <Typography variant="subtitle2" color="text.secondary" sx={{pl: 1, mb: 1, mt: 2}}> {/* Friends Section */}
-                    FRIENDS ({friends.length})
-                </Typography>
-
-                {loading ? (
-                    <Typography variant="body2" color="text.secondary" sx={{pl: 1}}>
-                        Loading friends...
-                    </Typography>
-                ) : friends.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary" sx={{pl: 1}}>
-                        No friends yet. Add some friends to start chatting!
-                    </Typography>
-                ) : (
-                    <List>
-                        {friends.map((friend) => (
-                            <ListItem
-                                button
-                                key={friend.PeerID}
-                                onClick={() => handleSelectChat(friend, 'friend')} // Select friend
-                                sx={{
-                                    borderRadius: 1,
-                                    mb: 0.5,
-                                    '&:hover': {
-                                        bgcolor: 'primary.light',
-                                        '& .MuiTypography-root': {
-                                            color: 'primary.contrastText',
-                                        },
-                                    },
-                                }}
-                            >
+                            ) : (
                                 <Badge
-                                    color={friend.IsOnline ? 'success' : 'error'}
+                                    color={item.IsOnline ? 'success' : 'error'}
                                     variant="dot"
                                     anchorOrigin={{
                                         vertical: 'bottom',
                                         horizontal: 'right',
                                     }}
                                     overlap="circular"
-                                    sx={{mr: 2}}
+                                    sx={{ mr: 2 }}
                                 >
-                                    <Avatar sx={{bgcolor: 'secondary.light'}}>
-                                        {getInitial(friend)}
+                                    <Avatar sx={{ bgcolor: 'secondary.light', width: 40, height: 40 }}>
+                                        {getInitial(item)}
                                     </Avatar>
                                 </Badge>
-                                <ListItemText
-                                    primary={getDisplayName(friend)}
-                                    secondary={formatPeerId(friend.PeerID)}
-                                    primaryTypographyProps={{
-                                        noWrap: true,
-                                        fontSize: 14,
-                                        fontWeight: 500
-                                    }}
-                                    secondaryTypographyProps={{
-                                        noWrap: true,
-                                        fontSize: 12
-                                    }}
-                                />
-                            </ListItem>
-                        ))}
-                    </List>
+                            )}
+
+                            <ListItemText
+                                primary={getDisplayName(item)}
+                                secondary={
+                                    type === 'group'
+                                        ? `${item.members?.length || 0} members`
+                                        : formatPeerId(item.PeerID)
+                                }
+                                primaryTypographyProps={{
+                                    noWrap: true,
+                                    fontSize: 14,
+                                    fontWeight: 500
+                                }}
+                                secondaryTypographyProps={{
+                                    noWrap: true,
+                                    fontSize: 12,
+                                    color: 'text.secondary'
+                                }}
+                            />
+                        </ListItem>
+                    ))}
+                </List>
+            )}
+        </>
+    );
+
+    return (
+        <>
+            {/* User Profile Section */}
+            <Box
+                sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    p: 2,
+                    bgcolor: 'background.paper'
+                }}
+            >
+                <Avatar
+                    sx={{
+                        width: 64,
+                        height: 64,
+                        bgcolor: 'primary.main',
+                        mb: 1
+                    }}
+                >
+                    <PersonIcon fontSize="large" />
+                </Avatar>
+                <Typography variant="h6" color="primary.dark" sx={{ fontWeight: 600 }}>
+                    Your Name
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                    Online
+                </Typography>
+            </Box>
+
+            <Divider />
+
+            {/* Action Buttons */}
+            <Box sx={{ p: 2, display: 'flex', gap: 1, bgcolor: 'background.paper' }}>
+                <Tooltip title="Add Friend" arrow>
+                    <IconButton
+                        color="primary"
+                        onClick={() => setAddFriendOpen(true)}
+                        sx={{
+                            flex: 1,
+                            '&:hover': {
+                                bgcolor: 'primary.light',
+                                color: 'primary.contrastText'
+                            }
+                        }}
+                    >
+                        <PersonAddIcon />
+                    </IconButton>
+                </Tooltip>
+
+                <Tooltip title="Friend Requests" arrow>
+                    <IconButton
+                        color="primary"
+                        onClick={() => setFriendRequestsOpen(true)}
+                        sx={{
+                            flex: 1,
+                            position: 'relative',
+                            '&:hover': {
+                                bgcolor: 'primary.light',
+                                color: 'primary.contrastText'
+                            }
+                        }}
+                    >
+                        <NotificationsIcon />
+                        {friendRequests.length > 0 && (
+                            <Badge
+                                badgeContent={friendRequests.length}
+                                color="error"
+                                sx={{
+                                    position: 'absolute',
+                                    top: 8,
+                                    right: 8
+                                }}
+                            />
+                        )}
+                    </IconButton>
+                </Tooltip>
+
+                <Tooltip title="Create Group Chat" arrow>
+                    <IconButton
+                        color="primary"
+                        onClick={() => setCreateGroupChatOpen(true)}
+                        sx={{
+                            flex: 1,
+                            '&:hover': {
+                                bgcolor: 'primary.light',
+                                color: 'primary.contrastText'
+                            }
+                        }}
+                    >
+                        <AddBoxIcon />
+                    </IconButton>
+                </Tooltip>
+            </Box>
+
+            <Divider />
+
+            {/* Chat Lists */}
+            <Box
+                sx={{
+                    flexGrow: 1,
+                    overflowY: 'auto',
+                    bgcolor: 'background.default',
+                    p: 1
+                }}
+            >
+                {renderChatSection(
+                    'Group Chats',
+                    groupChats,
+                    'group',
+                    'No group chats yet.'
+                )}
+
+                {renderChatSection(
+                    'Friends',
+                    friends,
+                    'friend',
+                    'No friends yet. Add some friends to start chatting!'
                 )}
             </Box>
 
-            <Box sx={{p: 2}}>
+            {/* Bottom Actions */}
+            <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
                 <Button
                     fullWidth
                     variant="outlined"
                     color="primary"
-                    startIcon={<SettingsIcon/>}
-                    sx={{mb: 1}}
+                    startIcon={<SettingsIcon />}
+                    sx={{
+                        mb: 1,
+                        textTransform: 'none',
+                        fontWeight: 500
+                    }}
                 >
-                    Settings {/* TODO: Implement Settings Page */}
+                    Settings
                 </Button>
                 <Button
                     fullWidth
                     variant="contained"
                     color="error"
-                    startIcon={<LogoutIcon/>}
+                    startIcon={<LogoutIcon />}
                     onClick={() => navigate('/login')}
+                    sx={{
+                        textTransform: 'none',
+                        fontWeight: 500
+                    }}
                 >
                     Logout
                 </Button>
             </Box>
 
+            {/* Modals */}
             <AddFriend
                 open={addFriendOpen}
                 onClose={() => setAddFriendOpen(false)}
@@ -351,11 +378,11 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat}) => { // Add onSelectChat pr
                 onRequestHandled={handleRequestHandled}
             />
 
-            <CreateGroupChat // Add CreateGroupChat modal
+            <CreateGroupChat
                 open={createGroupChatOpen}
                 onClose={() => setCreateGroupChatOpen(false)}
                 onCreateGroupChat={handleGroupChatCreated}
-                friends={friends} // Pass friends list to select members
+                friends={friends}
             />
         </>
     );
