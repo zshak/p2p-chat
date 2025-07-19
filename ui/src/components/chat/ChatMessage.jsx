@@ -1,4 +1,3 @@
-// src/components/chat/ChatMessage.jsx
 import React from 'react';
 import {
     Box,
@@ -6,33 +5,24 @@ import {
     Typography,
     Avatar,
 } from '@mui/material';
-import { getPeerId } from '../utils/userStore'; // Assuming this utility exists
 
-const ChatMessage = ({ message, currentUser, chatMembers }) => {
-    const ownPeerId = getPeerId(); // Get current user's peer ID
-    const isMyMessage = message.sender === 'me' || message.sender === ownPeerId; // Compare with ownPeerId
+const ChatMessage = ({ message, currentUser }) => {
+    // Get current user's peer ID from props or localStorage
+    const ownPeerId = currentUser?.peerId || localStorage.getItem('userPeerId') || 'mock-peer-id';
+    const isMyMessage = message.sender === 'me' || message.sender === ownPeerId;
 
     const formatTime = (timestamp) => {
         if (!timestamp) return '';
         const date = new Date(timestamp);
-        // Check if the date is valid before formatting
         if (isNaN(date.getTime())) {
             console.error("Invalid timestamp:", timestamp);
-            return 'Invalid Date';
+            return '';
         }
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
-    // Function to get sender's display name or a truncated peer ID for group chats
     const getSenderDisplayName = (senderPeerId) => {
-        // In a real app, you'd look up the sender's name from your friends/members list
-        // For simplicity here, we'll just use a truncated peer ID or a default
         if (senderPeerId === ownPeerId) return 'You';
-
-        // If chatMembers are provided (for group chats), try to find the member
-        // and return their display name if available. (requires chatMembers prop to be fully implemented in ChatPage)
-        // const member = chatMembers?.find(m => m.PeerID === senderPeerId);
-        // if (member?.display_name) return member.display_name;
 
         // Fallback to truncated peer ID
         if (senderPeerId && senderPeerId.length > 8) {
@@ -41,6 +31,11 @@ const ChatMessage = ({ message, currentUser, chatMembers }) => {
         return senderPeerId || 'Unknown User';
     };
 
+    const getSenderInitial = () => {
+        if (isMyMessage) return 'Y';
+        const displayName = getSenderDisplayName(message.sender);
+        return displayName.charAt(0).toUpperCase();
+    };
 
     return (
         <Box
@@ -52,18 +47,26 @@ const ChatMessage = ({ message, currentUser, chatMembers }) => {
         >
             {!isMyMessage && (
                 <Avatar sx={{ bgcolor: 'secondary.main', mr: 1 }}>
-                    {/* You might want to get the initial from the sender's name in group chats */}
-                    {message.sender ? getSenderDisplayName(message.sender).charAt(0).toUpperCase() : 'U'}
+                    {getSenderInitial()}
                 </Avatar>
             )}
             <Box
                 sx={{
                     maxWidth: '70%',
-                    // minWidth: '100px', // Consider removing or adjusting minWidth
+                    minWidth: '60px',
                 }}
             >
-                {!isMyMessage && ( // Display sender name in group chats (if not my message)
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'left', mb: 0.5 }}>
+                {!isMyMessage && (
+                    <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                            display: 'block',
+                            textAlign: 'left',
+                            mb: 0.5,
+                            ml: 0.5
+                        }}
+                    >
                         {getSenderDisplayName(message.sender)}
                     </Typography>
                 )}
@@ -74,10 +77,13 @@ const ChatMessage = ({ message, currentUser, chatMembers }) => {
                         borderRadius: 2,
                         bgcolor: isMyMessage ? 'primary.main' : 'background.paper',
                         color: isMyMessage ? 'primary.contrastText' : 'text.primary',
-                        wordBreak: 'break-word', // Ensure long words break
+                        wordBreak: 'break-word',
+                        hyphens: 'auto',
                     }}
                 >
-                    <Typography variant="body1">{message.text}</Typography>
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {message.text}
+                    </Typography>
                 </Paper>
                 <Typography
                     variant="caption"
@@ -86,6 +92,7 @@ const ChatMessage = ({ message, currentUser, chatMembers }) => {
                         display: 'block',
                         mt: 0.5,
                         textAlign: isMyMessage ? 'right' : 'left',
+                        mx: 0.5,
                     }}
                 >
                     {formatTime(message.timestamp)}
@@ -93,8 +100,7 @@ const ChatMessage = ({ message, currentUser, chatMembers }) => {
             </Box>
             {isMyMessage && (
                 <Avatar sx={{ bgcolor: 'primary.dark', ml: 1 }}>
-                    {/* You might want to get the initial from the current user's name */}
-                    Y {/* Assuming 'Y' for 'You' or replace with actual user initial */}
+                    Y
                 </Avatar>
             )}
         </Box>
