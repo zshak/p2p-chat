@@ -1,315 +1,625 @@
-// src/components/chat/ChatPage.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
+    AppBar,
+    Avatar,
     Box,
-    Typography,
-    TextField,
-    IconButton,
-    Paper,
-    Divider,
+    CircularProgress,
     Container,
-    Grid,
-    CircularProgress // Import CircularProgress for loading indicator
+    Drawer,
+    IconButton,
+    Toolbar,
+    Typography,
+    useMediaQuery,
+    useTheme,
+    TextField,
+    Paper
 } from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
 import SendIcon from '@mui/icons-material/Send';
+import ChatMessage from './ChatMessage';
 import Sidebar from '../sidebar/Sidebar';
-import websocketService from '../../services/websocket';
-import { getFriends, getGroupChatMessages, getChatMessages } from '../../services/api';
-import { getPeerId } from '../utils/userStore';
-import ChatMessage from "./ChatMessage";
+import { DAEMON_STATES } from '../utils/constants';
+import { checkStatus, getFriends, getGroupChatMessages, getChatMessages } from "../../services/api.js";
+import chatIcon from '../../../public/icon.svg';
 
-// Define initial number of messages to display and how many to load each time
-const INITIAL_DISPLAY_COUNT = 10; // Number of messages to show initially (increased for better default view)
-const MESSAGES_TO_LOAD_MORE = 10; // Number of older messages to load when scrolling up
+// Mock WebSocket service for now - replace with your actual implementation
+const websocketService = {
+    connect: () => {},
+    addMessageListener: (callback) => () => {},
+    sendMessage: (peerId, message) => console.log('Sending message:', { peerId, message }),
+    sendGroupMessage: (groupId, message) => console.log('Sending group message:', { groupId, message })
+};
 
-const ChatPage = () => {
+// Mock getPeerId function - replace with your actual implementation
+const getPeerId = () => {
+    return localStorage.getItem('userPeerId') || 'mock-peer-id';
+};
+
+const MESSAGES_PER_PAGE = 10;
+
+function ChatPage() {
+    const navigate = useNavigate();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const [status, setStatus] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [drawerOpen, setDrawerOpen] = useState(!isMobile);
+    const messagesEndRef = useRef(null);
+    const messagesContainerRef = useRef(null);
+    const loadMoreTriggerRef = useRef(null);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+    // Chat state
     const [message, setMessage] = useState('');
-    // Use messagesByChat to store ALL messages fetched/received for each chat
     const [messagesByChat, setMessagesByChat] = useState({});
     const [selectedChat, setSelectedChat] = useState(null);
     const [ownPeerId, setOwnPeerId] = useState('');
-    const messagesEndRef = useRef(null);
-    const messagesContainerRef = useRef(null); // Ref for the scrollable message container
     const [friends, setFriends] = useState([]);
+    const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+    const [isLoadingMoreMessages, setIsLoadingMoreMessages] = useState(false);
 
-    // State to track the number of messages to DISPLAY for the CURRENTLY selected chat
-    const [displayedMessageCount, setDisplayedMessageCount] = useState(INITIAL_DISPLAY_COUNT);
-    // State to track if we are currently loading older messages (to prevent multiple fetches/state updates)
-    const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
-    // State to track initial historical message loading
-    const [loadingInitialMessages, setLoadingInitialMessages] = useState(false);
+    // Pagination state for each chat
+    const [chatPaginationState, setChatPaginationState] = useState({
+        // chatId: {
+        //   allMessages: [], // All messages from backend
+        //   displayedMessages: [], // Currently displayed messages
+        //   hasMore: boolean, // Whether there are more messages to load
+        //   currentPage: number // Current page (for display)
+        // }
+    });
 
-
-    // Connect to WebSocket and add listener
+    // Initialize component
     useEffect(() => {
-        websocketService.connect();
-
-        const removeListener = websocketService.addMessageListener((data) => {
-            console.log("WebSocket message received:", data);
-            console.log("My Peer ID is: ", ownPeerId); // Added for debugging ownPeerId
-
-            // IMPORTANT: Check if ownPeerId is available before processing messages that depend on it
-            // If it's not set yet, we can't determine if message is outgoing or from correct chat
-            if (!ownPeerId) {
-                console.warn("Received WebSocket message before ownPeerId was set. Message:", data);
-                return;
-            }
-
-
-            if (data.type === 'DIRECT_MESSAGE' || data.type === 'GROUP_MESSAGE') {
-                const { sender_peer_id, message: chatMessageText } = data.payload;
-
-                let chatId;
-                if (data.type === 'DIRECT_MESSAGE') {
-                    const { target_peer_id } = data.payload;
-                    // For DMs, the chat ID is the other participant's peer ID
-                    chatId = sender_peer_id === ownPeerId ? target_peer_id : sender_peer_id;
-                } else { // GROUP_MESSAGE
-                    const { group_id } = data.payload;
-                    chatId = group_id;
-                }
-
-                const newMessage = {
-                    SenderPeerId: sender_peer_id,
-                    Message: chatMessageText,
-                    // Use server timestamp if available, otherwise current.
-                    // For direct messages, the backend provides "Time", for group it's implicit (or could be in payload if server sends).
-                    Time: data.payload.Time || new Date().toISOString(),
-                    isOutgoing: sender_peer_id === ownPeerId, // Determine if it's our message
-                    chatId: chatId,
-                };
-
-                console.log(`Adding new incoming/echoed message to chatId ${chatId}:`, newMessage);
-
-                setMessagesByChat(prev => {
-                    const chatMessages = prev[chatId] || [];
-                    const updatedMessages = [...chatMessages, newMessage];
-                    return {
-                        ...prev,
-                        [chatId]: updatedMessages,
-                    };
-                });
-
-                // If the new message is for the currently selected chat AND the user is near the bottom, scroll down
-                if (selectedChat && ( (selectedChat.type === 'friend' && selectedChat.PeerID === chatId) || (selectedChat.type === 'group' && selectedChat.group_id === chatId) ) ) {
-                    const container = messagesContainerRef.current;
-                    if (container) {
-                        const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
-                        if (isAtBottom) {
-                            setTimeout(() => {
-                                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-                            }, 50);
-                        }
-                    }
-                }
-            }
-        });
-
-        // Load friends (needed for CreateGroupChat modal and potentially resolving names)
-        const loadFriends = async () => {
+        const initializeChat = async () => {
             try {
-                const response = await getFriends();
-                if (response.data) {
-                    setFriends(response.data);
+                const response = await checkStatus();
+                setStatus(response.data.state);
+
+                if (response.data.state !== DAEMON_STATES.RUNNING) {
+                    navigate('/login');
+                    return;
                 }
-            } catch (error) {
-                console.error('Failed to load friends:', error);
-            }
-        };
 
-        loadFriends();
-
-        // Fetch own peer ID
-        setOwnPeerId(getPeerId());
-
-        return () => {
-            removeListener();
-        };
-    }, [ownPeerId, selectedChat]);
-
-
-    // Fetch messages when selectedChat changes
-    useEffect(() => {
-        const fetchMessages = async () => {
-            if (selectedChat) {
-                const chatId = selectedChat.type === 'friend' ? selectedChat.PeerID : selectedChat.group_id;
-
-                setDisplayedMessageCount(INITIAL_DISPLAY_COUNT);
-                setLoadingOlderMessages(false);
-                setLoadingInitialMessages(true);
+                const peerId = getPeerId();
+                setOwnPeerId(peerId);
 
                 try {
-                    let fetchedMsgs = [];
-                    if (selectedChat.type === 'group') {
-                        const response = await getGroupChatMessages(selectedChat.group_id);
-                        if (response.data && response.data.Messages) {
-                            fetchedMsgs = response.data.Messages.map(msg => ({
-                                SenderPeerId: msg.SenderPeerId,
-                                Message: msg.Message,
-                                Time: msg.Time,
-                                isOutgoing: msg.SenderPeerId === ownPeerId,
-                                chatId: chatId,
-                            }));
-                            console.log(`Fetched ${fetchedMsgs.length} historical messages for group ${chatId}`);
-                        }
-                    } else if (selectedChat.type === 'friend') {
-                        // Fetch historical direct messages ===
-                        const response = await getChatMessages(selectedChat.PeerID); // Pass the friend's peer_id
-                        if (response.data && response.data.Messages) {
-                            fetchedMsgs = response.data.Messages.map(msg => ({
-                                // For direct messages, determine SenderPeerId based on IsOutgoing
-                                SenderPeerId: msg.IsOutgoing ? ownPeerId : selectedChat.PeerID,
-                                Message: msg.Message,
-                                Time: msg.SendTime,
-                                isOutgoing: msg.IsOutgoing,
-                                chatId: chatId,
-                            }));
-                            console.log(`Fetched ${fetchedMsgs.length} historical messages for friend ${chatId}`);
-                        }
+                    const friendsResponse = await getFriends();
+                    if (friendsResponse.data) {
+                        setFriends(friendsResponse.data);
+                    }
+                } catch (error) {
+                    console.error('Failed to load friends:', error);
+                    setFriends([]);
+                }
+
+                setLoading(false);
+            } catch (err) {
+                console.error('Initialization failed:', err);
+                navigate('/login');
+            }
+        };
+
+        initializeChat();
+    }, [navigate]);
+
+    // Auto-refresh status
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            try {
+                if (!document.hidden) {
+                    const statusResponse = await checkStatus();
+                    setStatus(statusResponse.data.state);
+
+                    if (statusResponse.data.state !== DAEMON_STATES.RUNNING) {
+                        navigate('/login');
+                        return;
                     }
 
-                    const sortedFetchedMsgs = fetchedMsgs.sort((a, b) => new Date(a.Time).getTime() - new Date(b.Time).getTime());
-
-                    setMessagesByChat(prev => ({
-                        ...prev,
-                        [chatId]: sortedFetchedMsgs,
-                    }));
-                    console.log(`Updated messagesByChat for chat ${chatId} with ${sortedFetchedMsgs.length} fetched messages.`);
-
-                } catch (error) {
-                    console.error('Failed to fetch messages for chat:', chatId, error);
-                    setMessagesByChat(prev => ({ ...prev, [chatId]: prev[chatId] || [] }));
-                } finally {
-                    setLoadingInitialMessages(false);
-
-                    setTimeout(() => {
-                        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                    }, 150);
+                    setRefreshTrigger(prev => prev + 1);
                 }
+            } catch (err) {
+                console.error('Status check failed:', err);
+            }
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [navigate]);
+
+    // Smooth scroll to bottom function
+    const scrollToBottom = useCallback((behavior = 'smooth', force = false) => {
+        if (messagesEndRef.current) {
+            // For initial load, use scrollTop to ensure we're at the bottom
+            if (force && messagesContainerRef.current) {
+                messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
             } else {
-                // If no chat selected, clear messages (optional)
+                messagesEndRef.current.scrollIntoView({
+                    behavior,
+                    block: 'end'
+                });
             }
-        };
+        }
+    }, []);
 
-        fetchMessages();
+    // Load all messages for a chat and set up pagination
+    const loadAllMessages = useCallback(async (chat) => {
+        if (!chat || !ownPeerId) return [];
 
-    }, [selectedChat, ownPeerId]);
+        try {
+            let fetchedMsgs = [];
 
-
-    // Effect for handling scroll to load more
-    useEffect(() => {
-        const container = messagesContainerRef.current;
-        if (!container || !selectedChat) return;
-
-        const handleScroll = () => {
-            if (container.scrollTop < 100 && !loadingOlderMessages) {
-                const chatId = selectedChat.type === 'friend' ? selectedChat.PeerID : selectedChat.group_id;
-                const allMessages = messagesByChat[chatId] || [];
-
-                if (allMessages.length > displayedMessageCount) {
-                    setLoadingOlderMessages(true);
-                    console.log("Scrolled to top, attempting to load more messages.");
-
-                    const currentScrollHeight = container.scrollHeight;
-
-                    setDisplayedMessageCount(prevCount => {
-                        const newCount = prevCount + MESSAGES_TO_LOAD_MORE;
-                        console.log(`Increasing displayed message count from ${prevCount} to ${newCount}`);
-                        return newCount;
-                    });
-
-                    setTimeout(() => {
-                        const newScrollHeight = container.scrollHeight;
-                        container.scrollTop = newScrollHeight - currentScrollHeight;
-                        setLoadingOlderMessages(false);
-                        console.log("Scroll position adjusted after loading more.");
-                    }, 50);
-
-                } else {
-                    console.log("Scrolled to top, but no more older messages available in state.");
+            if (chat.type === 'group') {
+                const response = await getGroupChatMessages(chat.group_id);
+                if (response.data && response.data.Messages) {
+                    fetchedMsgs = response.data.Messages.map(msg => ({
+                        SenderPeerId: msg.SenderPeerId,
+                        Message: msg.Message,
+                        Time: msg.Time,
+                        isOutgoing: msg.SenderPeerId === ownPeerId,
+                        chatId: chat.group_id,
+                    }));
+                }
+            } else if (chat.type === 'friend') {
+                const response = await getChatMessages(chat.PeerID);
+                if (response.data && response.data.Messages) {
+                    fetchedMsgs = response.data.Messages.map(msg => ({
+                        SenderPeerId: msg.IsOutgoing ? ownPeerId : chat.PeerID,
+                        Message: msg.Message,
+                        Time: msg.SendTime,
+                        isOutgoing: msg.IsOutgoing,
+                        chatId: chat.PeerID,
+                    }));
                 }
             }
-        };
 
-        container.addEventListener('scroll', handleScroll);
+            // Sort messages by time (oldest first)
+            return fetchedMsgs.sort((a, b) => new Date(a.Time).getTime() - new Date(b.Time).getTime());
+
+        } catch (error) {
+            console.error('Failed to load messages:', error);
+            return [];
+        }
+    }, [ownPeerId]);
+
+    // Get the last N messages for initial display
+    const getLastNMessages = useCallback((messages, n) => {
+        return messages.slice(-n);
+    }, []);
+
+    // Load more messages (previous messages)
+    const loadMoreMessages = useCallback((chatId) => {
+        setChatPaginationState(prev => {
+            const chatState = prev[chatId];
+            if (!chatState || !chatState.hasMore) return prev;
+
+            const currentDisplayCount = chatState.displayedMessages.length;
+            const totalMessages = chatState.allMessages.length;
+            const messagesToLoad = Math.min(MESSAGES_PER_PAGE, totalMessages - currentDisplayCount);
+
+            if (messagesToLoad <= 0) {
+                return {
+                    ...prev,
+                    [chatId]: {
+                        ...chatState,
+                        hasMore: false
+                    }
+                };
+            }
+
+            // Get messages from the beginning that aren't displayed yet
+            const startIndex = totalMessages - currentDisplayCount - messagesToLoad;
+            const newMessages = chatState.allMessages.slice(startIndex, totalMessages - currentDisplayCount);
+
+            return {
+                ...prev,
+                [chatId]: {
+                    ...chatState,
+                    displayedMessages: [...newMessages, ...chatState.displayedMessages],
+                    hasMore: startIndex > 0,
+                    currentPage: chatState.currentPage + 1
+                }
+            };
+        });
+    }, []);
+
+    // Handle chat selection
+    const handleSelectChat = useCallback(async (chat) => {
+        console.log('Selected chat:', chat);
+
+        if (selectedChat?.PeerID === chat.PeerID && selectedChat?.group_id === chat.group_id) {
+            return;
+        }
+
+        setSelectedChat(chat);
+        setMessage('');
+
+        const chatId = chat.type === 'friend' ? chat.PeerID : chat.group_id;
+
+        // Check if we already have pagination state for this chat
+        if (chatPaginationState[chatId]) {
+            // Just scroll to bottom without reloading
+            setTimeout(() => scrollToBottom('auto', true), 50);
+            return;
+        }
+
+        setIsLoadingMessages(true);
+
+        try {
+            // Load all messages from backend
+            const allMessages = await loadAllMessages(chat);
+
+            // Get the last 20 messages for initial display
+            const initialMessages = getLastNMessages(allMessages, MESSAGES_PER_PAGE);
+
+            // Set up pagination state
+            setChatPaginationState(prev => ({
+                ...prev,
+                [chatId]: {
+                    allMessages: allMessages,
+                    displayedMessages: initialMessages,
+                    hasMore: allMessages.length > MESSAGES_PER_PAGE,
+                    currentPage: 1
+                }
+            }));
+
+            // Update the legacy messagesByChat for compatibility
+            setMessagesByChat(prev => ({
+                ...prev,
+                [chatId]: initialMessages,
+            }));
+
+            // Scroll to bottom after messages are loaded
+            setTimeout(() => scrollToBottom('auto', true), 100);
+            // Additional fallback scroll
+            setTimeout(() => {
+                if (messagesContainerRef.current) {
+                    messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+                }
+            }, 200);
+
+        } catch (error) {
+            console.error('Failed to load messages:', error);
+            setChatPaginationState(prev => ({
+                ...prev,
+                [chatId]: {
+                    allMessages: [],
+                    displayedMessages: [],
+                    hasMore: false,
+                    currentPage: 1
+                }
+            }));
+            setMessagesByChat(prev => ({ ...prev, [chatId]: [] }));
+        } finally {
+            setIsLoadingMessages(false);
+        }
+    }, [selectedChat, chatPaginationState, loadAllMessages, getLastNMessages, scrollToBottom]);
+
+    // Update messagesByChat when pagination state changes and ensure scroll to bottom
+    useEffect(() => {
+        if (selectedChat) {
+            const chatId = selectedChat.type === 'friend' ? selectedChat.PeerID : selectedChat.group_id;
+            const chatState = chatPaginationState[chatId];
+
+            if (chatState) {
+                setMessagesByChat(prev => ({
+                    ...prev,
+                    [chatId]: chatState.displayedMessages
+                }));
+
+                // If this is the initial load (first page), scroll to bottom
+                if (chatState.currentPage === 1 && chatState.displayedMessages.length > 0) {
+                    setTimeout(() => {
+                        if (messagesContainerRef.current) {
+                            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+                        }
+                    }, 50);
+                }
+            }
+        }
+    }, [chatPaginationState, selectedChat]);
+
+    // Intersection Observer for loading more messages
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const [entry] = entries;
+                if (entry.isIntersecting && selectedChat && !isLoadingMoreMessages) {
+                    const chatId = selectedChat.type === 'friend' ? selectedChat.PeerID : selectedChat.group_id;
+                    const chatState = chatPaginationState[chatId];
+
+                    if (chatState && chatState.hasMore) {
+                        setIsLoadingMoreMessages(true);
+
+                        // Store current scroll position relative to the container
+                        const container = messagesContainerRef.current;
+                        const previousScrollHeight = container.scrollHeight;
+                        const previousScrollTop = container.scrollTop;
+
+                        setTimeout(() => {
+                            loadMoreMessages(chatId);
+
+                            // Restore scroll position after loading more messages
+                            setTimeout(() => {
+                                const newScrollHeight = container.scrollHeight;
+                                const heightDifference = newScrollHeight - previousScrollHeight;
+                                container.scrollTop = previousScrollTop + heightDifference;
+                                setIsLoadingMoreMessages(false);
+                            }, 50);
+                        }, 500); // Small delay to show loading state
+                    }
+                }
+            },
+            {
+                root: messagesContainerRef.current,
+                threshold: 1.0,
+            }
+        );
+
+        if (loadMoreTriggerRef.current) {
+            observer.observe(loadMoreTriggerRef.current);
+        }
 
         return () => {
-            container.removeEventListener('scroll', handleScroll);
+            if (loadMoreTriggerRef.current) {
+                observer.unobserve(loadMoreTriggerRef.current);
+            }
         };
-    }, [selectedChat, messagesByChat, displayedMessageCount, loadingOlderMessages]);
+    }, [selectedChat, chatPaginationState, isLoadingMoreMessages, loadMoreMessages]);
 
+    // Auto-scroll when new messages arrive (only if user is at bottom)
+    useEffect(() => {
+        if (selectedChat) {
+            const chatId = selectedChat.type === 'friend' ? selectedChat.PeerID : selectedChat.group_id;
+            const messages = messagesByChat[chatId];
+            const chatState = chatPaginationState[chatId];
 
-    const handleSendMessage = () => {
+            if (messages && messages.length > 0) {
+                const container = messagesContainerRef.current;
+                if (container) {
+                    // For initial load, always scroll to bottom
+                    if (chatState && chatState.currentPage === 1) {
+                        setTimeout(() => {
+                            container.scrollTop = container.scrollHeight;
+                        }, 100);
+                    } else {
+                        // For subsequent messages, only scroll if user is near bottom
+                        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+                        if (isNearBottom) {
+                            setTimeout(() => scrollToBottom('smooth'), 50);
+                        }
+                    }
+                }
+            }
+        }
+    }, [messagesByChat, selectedChat, chatPaginationState, scrollToBottom]);
+
+    const handleSendMessage = (e) => {
+        e.preventDefault();
         if (!message.trim() || !selectedChat) return;
 
         const messageToSend = message;
         setMessage('');
 
+        const chatId = selectedChat.type === 'friend' ? selectedChat.PeerID : selectedChat.group_id;
+        const newMessage = {
+            SenderPeerId: ownPeerId,
+            Message: messageToSend,
+            Time: new Date().toISOString(),
+            isOutgoing: true,
+            chatId: chatId,
+        };
+
+        // Add message to pagination state
+        setChatPaginationState(prev => {
+            const chatState = prev[chatId];
+            if (chatState) {
+                return {
+                    ...prev,
+                    [chatId]: {
+                        ...chatState,
+                        allMessages: [...chatState.allMessages, newMessage],
+                        displayedMessages: [...chatState.displayedMessages, newMessage]
+                    }
+                };
+            }
+            return prev;
+        });
+
+        // Send through WebSocket
         if (selectedChat.type === 'friend') {
             websocketService.sendMessage(selectedChat.PeerID, messageToSend);
         } else if (selectedChat.type === 'group') {
             websocketService.sendGroupMessage(selectedChat.group_id, messageToSend);
         }
+
+        // Scroll to bottom after sending
+        setTimeout(() => scrollToBottom('smooth'), 50);
     };
 
+    const toggleDrawer = () => {
+        setDrawerOpen(!drawerOpen);
+    };
+
+    const drawerWidth = 240;
+
+    // Get messages for selected chat
     const currentChatId = selectedChat?.type === 'friend' ? selectedChat.PeerID : selectedChat?.group_id;
-    const allMessagesForSelectedChat = messagesByChat[currentChatId] || [];
+    const messagesToDisplay = messagesByChat[currentChatId] || [];
+    const currentChatState = chatPaginationState[currentChatId];
 
-    const startIndex = Math.max(0, allMessagesForSelectedChat.length - displayedMessageCount);
-    const messagesToDisplay = allMessagesForSelectedChat.slice(startIndex);
-
-    const olderMessagesCount = allMessagesForSelectedChat.length - messagesToDisplay.length;
-
+    if (loading) {
+        return (
+            <Container sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'}}>
+                <Box sx={{textAlign: 'center'}}>
+                    <CircularProgress color="primary" size={60} thickness={4}/>
+                    <Typography variant="h6" color="primary" sx={{mt: 2}}>
+                        Loading Chat...
+                    </Typography>
+                </Box>
+            </Container>
+        );
+    }
 
     return (
-        <Container maxWidth="xl" sx={{ height: '100vh', display: 'flex', p: 2 }}>
-            <Grid container spacing={2} sx={{ height: '100%' }}>
-                <Grid item xs={3} sx={{ height: '100%' }}>
-                    <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-                        <Sidebar onSelectChat={setSelectedChat} friends={friends} />
-                    </Paper>
-                </Grid>
-                <Grid item xs={9} sx={{ height: '100%' }}>
-                    <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        {selectedChat ? (
-                            <>
-                                <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}>
-                                    <Typography variant="h6">
-                                        {selectedChat.type === 'friend' ? selectedChat.display_name || selectedChat.PeerID : selectedChat.name || `Group (${selectedChat.members.length})`}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary">
-                                        {selectedChat.type === 'friend' ? (selectedChat.IsOnline ? 'Online' : 'Offline') : `${selectedChat.members.length} members`}
+        <Box sx={{display: 'flex', height: '100vh'}}>
+            {/* Mobile Drawer */}
+            {isMobile && (
+                <Drawer
+                    variant="temporary"
+                    open={drawerOpen}
+                    onClose={toggleDrawer}
+                    sx={{
+                        width: drawerWidth,
+                        flexShrink: 0,
+                        '& .MuiDrawer-paper': {
+                            width: drawerWidth,
+                            boxSizing: 'border-box',
+                            bgcolor: 'background.default',
+                        },
+                    }}
+                >
+                    <Box sx={{display: 'flex', justifyContent: 'flex-end', p: 1}}>
+                        <IconButton onClick={toggleDrawer}>
+                            <CloseIcon/>
+                        </IconButton>
+                    </Box>
+                    <Sidebar
+                        refreshTrigger={refreshTrigger}
+                        onSelectChat={handleSelectChat}
+                        friends={friends}
+                        selectedChat={selectedChat}
+                    />
+                </Drawer>
+            )}
+
+            {/* Desktop Drawer */}
+            {!isMobile && (
+                <Drawer
+                    variant="permanent"
+                    open={drawerOpen}
+                    sx={{
+                        width: drawerWidth,
+                        flexShrink: 0,
+                        '& .MuiDrawer-paper': {
+                            width: drawerWidth,
+                            boxSizing: 'border-box',
+                            bgcolor: 'background.default',
+                            borderRight: '1px solid rgba(233, 30, 99, 0.12)',
+                        },
+                    }}
+                >
+                    <Sidebar
+                        refreshTrigger={refreshTrigger}
+                        onSelectChat={handleSelectChat}
+                        friends={friends}
+                        selectedChat={selectedChat}
+                    />
+                </Drawer>
+            )}
+
+            {/* Main Chat Area */}
+            <Box sx={{flexGrow: 1, display: 'flex', flexDirection: 'column', height: '100%'}}>
+                {/* Header */}
+                <AppBar position="static" color="primary" elevation={0}>
+                    <Toolbar>
+                        {isMobile && (
+                            <IconButton
+                                color="inherit"
+                                aria-label="open drawer"
+                                edge="start"
+                                onClick={toggleDrawer}
+                                sx={{mr: 2}}
+                            >
+                                <MenuIcon/>
+                            </IconButton>
+                        )}
+                        <Avatar sx={{
+                            bgcolor: 'primary.main',
+                            ml: -1,
+                            mr: 0.5
+                        }}>
+                            <img src={chatIcon} alt="Chat Icon" style={{width: '60%', height: '60%'}}/>
+                        </Avatar>
+                        <Typography variant="h6" component="div" sx={{flexGrow: 1}}>
+                            {selectedChat ? (
+                                selectedChat.type === 'friend'
+                                    ? (selectedChat.display_name || selectedChat.PeerID)
+                                    : (selectedChat.name || `Group (${selectedChat.members?.length || 0})`)
+                            ) : 'P2P Chat'}
+                        </Typography>
+                        {selectedChat && (
+                            <Typography variant="body2" sx={{color: 'inherit', opacity: 0.7}}>
+                                {selectedChat.type === 'friend'
+                                    ? (selectedChat.IsOnline ? 'Online' : 'Offline')
+                                    : `${selectedChat.members?.length || 0} members`}
+                            </Typography>
+                        )}
+                    </Toolbar>
+                </AppBar>
+
+                {/* Chat Content */}
+                {selectedChat ? (
+                    <>
+                        {/* Messages Area */}
+                        <Box
+                            ref={messagesContainerRef}
+                            sx={{
+                                flexGrow: 1,
+                                bgcolor: 'background.default',
+                                p: 2,
+                                overflowY: 'auto',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                scrollBehavior: 'smooth',
+                                position: 'relative'
+                            }}
+                        >
+                            {/* Load More Trigger */}
+                            {currentChatState?.hasMore && (
+                                <Box
+                                    ref={loadMoreTriggerRef}
+                                    sx={{
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        py: 2,
+                                        minHeight: '40px'
+                                    }}
+                                >
+                                    {isLoadingMoreMessages ? (
+                                        <CircularProgress size={24} />
+                                    ) : (
+                                        <Typography variant="caption" color="text.secondary">
+                                            Scroll up to load more messages
+                                        </Typography>
+                                    )}
+                                </Box>
+                            )}
+
+                            {isLoadingMessages ? (
+                                <Box sx={{
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    height: '100%'
+                                }}>
+                                    <CircularProgress size={40} />
+                                </Box>
+                            ) : messagesToDisplay.length === 0 ? (
+                                <Box sx={{
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    height: '100%',
+                                    color: 'text.secondary'
+                                }}>
+                                    <Typography variant="body1">
+                                        No messages yet. Start the conversation!
                                     </Typography>
                                 </Box>
-
-                                <Box
-                                    ref={messagesContainerRef}
-                                    sx={{ flexGrow: 1, p: 2, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}
-                                >
-                                    {/* Show loading indicator for initial fetch */}
-                                    {loadingInitialMessages && allMessagesForSelectedChat.length === 0 && (
-                                        <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-                                            <CircularProgress size={20} />
-                                        </Box>
-                                    )}
-
-                                    {/* Show loading indicator for older messages */}
-                                    {loadingOlderMessages && (
-                                        <Box sx={{ display: 'flex', justifyContent: 'center', my: 1 }}>
-                                            <CircularProgress size={20} />
-                                        </Box>
-                                    )}
-
-                                    {/* Indicator for older messages not shown */}
-                                    {olderMessagesCount > 0 && !loadingOlderMessages && (
-                                        <Box sx={{ textAlign: 'center', mb: 2 }}>
-                                            <Typography variant="body2" color="text.secondary">
-                                                Scroll up to load {Math.min(olderMessagesCount, MESSAGES_TO_LOAD_MORE)} older messages.
-                                            </Typography>
-                                        </Box>
-                                    )}
-
-                                    {/* Map over the sliced array of messages to display */}
+                            ) : (
+                                <>
                                     {messagesToDisplay.map((msg, index) => (
                                         <ChatMessage
                                             key={`${msg.chatId}-${msg.Time}-${msg.SenderPeerId}-${index}`}
@@ -321,49 +631,93 @@ const ChatPage = () => {
                                             currentUser={{ peerId: ownPeerId }}
                                         />
                                     ))}
-                                    <div ref={messagesEndRef} />
-                                </Box>
+                                    {/* Force scroll to bottom on initial render */}
+                                    {currentChatState?.currentPage === 1 && (
+                                        <div
+                                            ref={(el) => {
+                                                if (el && messagesContainerRef.current) {
+                                                    // Force scroll to bottom immediately
+                                                    setTimeout(() => {
+                                                        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+                                                    }, 0);
+                                                }
+                                            }}
+                                        />
+                                    )}
+                                </>
+                            )}
+                            <div ref={messagesEndRef}/>
+                        </Box>
 
-                                <Divider />
-
-                                <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
-                                    <TextField
-                                        fullWidth
-                                        variant="outlined"
-                                        placeholder="Type a message..."
-                                        value={message}
-                                        onChange={(e) => setMessage(e.target.value)}
-                                        onKeyPress={(e) => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault();
-                                                handleSendMessage();
-                                            }
-                                        }}
-                                        size="small"
-                                        disabled={loadingInitialMessages}
-                                    />
-                                    <IconButton
-                                        color="primary"
-                                        onClick={handleSendMessage}
-                                        disabled={!message.trim() || loadingInitialMessages}
-                                        sx={{ ml: 1 }}
-                                    >
-                                        <SendIcon />
-                                    </IconButton>
-                                </Box>
-                            </>
-                        ) : (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                                <Typography variant="h6" color="text.secondary">
-                                    Select a chat to start messaging
-                                </Typography>
-                            </Box>
-                        )}
-                    </Paper>
-                </Grid>
-            </Grid>
-        </Container>
+                        {/* Message Input */}
+                        <Paper
+                            component="form"
+                            onSubmit={handleSendMessage}
+                            sx={{
+                                p: 2,
+                                display: 'flex',
+                                alignItems: 'center',
+                                borderTop: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 0,
+                            }}
+                            elevation={0}
+                        >
+                            <TextField
+                                fullWidth
+                                variant="outlined"
+                                placeholder="Type your message..."
+                                value={message}
+                                onChange={(e) => setMessage(e.target.value)}
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSendMessage(e);
+                                    }
+                                }}
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        borderRadius: 4,
+                                    },
+                                }}
+                            />
+                            <IconButton
+                                type="submit"
+                                color="primary"
+                                disabled={!message.trim()}
+                                sx={{
+                                    ml: 1,
+                                    bgcolor: 'primary.main',
+                                    color: 'white',
+                                    '&:hover': {
+                                        bgcolor: 'primary.dark'
+                                    },
+                                    '&:disabled': {
+                                        bgcolor: 'grey.300',
+                                        color: 'grey.500'
+                                    }
+                                }}
+                            >
+                                <SendIcon />
+                            </IconButton>
+                        </Paper>
+                    </>
+                ) : (
+                    <Box sx={{
+                        flexGrow: 1,
+                        bgcolor: 'background.default',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }}>
+                        <Typography variant="h6" color="text.secondary">
+                            Select a chat to start messaging
+                        </Typography>
+                    </Box>
+                )}
+            </Box>
+        </Box>
     );
-};
+}
 
 export default ChatPage;
