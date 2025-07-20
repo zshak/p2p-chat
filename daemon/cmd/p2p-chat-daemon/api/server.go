@@ -12,6 +12,7 @@ import (
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/profile"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/storage"
 )
 
 // StartAPIServer initializes and starts the HTTP API server.
@@ -23,13 +24,14 @@ func StartAPIServer(
 	chatService *chat.Service,
 	profileService *profile.Service,
 	connectionService *connection.Service,
+	displayNameRepo storage.DisplayNameRepository,
 ) (net.Listener, *http.Server, *ApiHandler, error) {
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to listen on %s: %w", addr, err)
 	}
 
-	handler := newAPIHandler(appState, bus, chatService, profileService, connectionService)
+	handler := newAPIHandler(appState, bus, chatService, profileService, connectionService, displayNameRepo)
 
 	mux := http.NewServeMux()
 

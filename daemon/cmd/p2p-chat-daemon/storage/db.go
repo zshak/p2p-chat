@@ -111,9 +111,21 @@ func (db *DB) ensureCreation() error {
 			content BLOB NOT NULL,
 			sent_at INTEGER NOT NULL
 		);
+		
+		CREATE TABLE IF NOT EXISTS display_names (
+    		id INTEGER PRIMARY KEY AUTOINCREMENT,
+    		entity_id TEXT NOT NULL,           -- peer_id or group_id
+    		entity_type TEXT NOT NULL,         -- 'friend' or 'group'
+    		display_name TEXT NOT NULL,
+    		created_at INTEGER NOT NULL,
+    		updated_at INTEGER NOT NULL,
+    		UNIQUE(entity_id, entity_type)
+		);
 
 		CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages (recipient_peer_id);
 		CREATE INDEX IF NOT EXISTS idx_relationships_peer_id ON relationships (peer_id);
+		CREATE INDEX IF NOT EXISTS idx_display_names_entity ON display_names (entity_id, entity_type);
+
 	`
 
 	log.Println("Storage: Applying database schema...")
