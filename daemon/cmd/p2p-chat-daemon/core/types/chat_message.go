@@ -56,6 +56,7 @@ type FriendRelationship struct {
 	RequestedAt time.Time    // Timestamp when request was sent/received
 	ApprovedAt  time.Time    // Timestamp when approved
 	IsOnline    bool         // is user Online currently
+	DisplayName string       `json:"display_name,omitempty"`
 }
 
 // GroupKey represents the group key.

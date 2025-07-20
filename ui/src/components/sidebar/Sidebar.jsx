@@ -1,34 +1,33 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
+import {useNavigate} from 'react-router-dom';
 import {
+    Alert,
     Avatar,
     Badge,
     Box,
-    Button,
     Divider,
     IconButton,
     List,
     ListItem,
     ListItemText,
-    Tooltip,
-    Typography,
     Snackbar,
-    Alert
+    Tooltip,
+    Typography
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
-import SettingsIcon from '@mui/icons-material/Settings';
-import LogoutIcon from '@mui/icons-material/Logout';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import GroupIcon from '@mui/icons-material/Group';
 import AddBoxIcon from '@mui/icons-material/AddBox';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import { useNavigate } from 'react-router-dom';
-import { getFriendRequests, getFriends, getGroupChats, checkStatus } from '../../services/api';
+import {checkStatus, getFriendRequests, getFriends, getGroupChats, getDisplayNameAPI} from '../../services/api';
 import AddFriend from '../friends/AddFriend';
 import FriendRequests from '../friends/FriendRequests';
 import CreateGroupChat from '../groupchat/CreateGroupChat.jsx';
+import EditDisplayName from "../friends/EditDisplayName.jsx";
 
-const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
+
+const Sidebar = ({refreshTrigger = 0, onSelectChat, onDisplayNameUpdate}) => {
     const navigate = useNavigate();
     const [friends, setFriends] = useState([]);
     const [groupChats, setGroupChats] = useState([]);
@@ -48,6 +47,7 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
     };
 
     const getDisplayName = (chat) => {
+        // For friends: check display_name from API response first, then fallback to formatted peer ID
         if (chat.PeerID) {
             return chat.display_name || formatPeerId(chat.PeerID);
         } else if (chat.group_id) {
@@ -63,30 +63,62 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
 
     const loadChatData = useCallback(async () => {
         try {
-            const [friendsResponse, requestsResponse, groupChatsResponse, statusResponse] = await Promise.all([
+            const [friendsResponse, requestsResponse, groupChatsResponse, statusResponse] = await Promise.allSettled([
                 getFriends(),
                 getFriendRequests(),
                 getGroupChats(),
                 checkStatus()
             ]);
 
-            const validFriends = (friendsResponse.data || []).filter(friend =>
-                friend && friend.PeerID
-            );
+            // Handle friends response
+            const validFriends = friendsResponse.status === 'fulfilled'
+                ? (friendsResponse.value.data || []).filter(friend => friend && friend.PeerID)
+                : [];
+
+            // Handle friend requests response
+            const validRequests = requestsResponse.status === 'fulfilled'
+                ? (requestsResponse.value.data || [])
+                : [];
+
+            // Handle groups response
+            const validGroups = groupChatsResponse.status === 'fulfilled'
+                ? (groupChatsResponse.value.data || [])
+                : [];
+
+            // Handle status response
+            const userStatus = statusResponse.status === 'fulfilled'
+                ? {
+                    peer_id: statusResponse.value.data?.peer_id || null,
+                    state: statusResponse.value.data?.state || null
+                }
+                : { peer_id: null, state: null };
 
             setFriends(validFriends);
-            setFriendRequests(requestsResponse.data || []);
-            setGroupChats(groupChatsResponse.data || []);
-            setCurrentUser({
-                peer_id: statusResponse.data?.peer_id || null,
-                state: statusResponse.data?.state || null
-            });
+            setFriendRequests(validRequests);
+            setGroupChats(validGroups);
+            setCurrentUser(userStatus);
+
+            // Log any failures
+            if (friendsResponse.status === 'rejected') {
+                console.warn('Failed to load friends:', friendsResponse.reason);
+            }
+            if (requestsResponse.status === 'rejected') {
+                console.warn('Failed to load friend requests:', requestsResponse.reason);
+            }
+            if (groupChatsResponse.status === 'rejected') {
+                console.warn('Failed to load group chats:', groupChatsResponse.reason);
+            }
+            if (statusResponse.status === 'rejected') {
+                console.warn('Failed to load status:', statusResponse.reason);
+            }
+
         } catch (error) {
-            console.error('Failed to load chat data:', error);
+            console.error('Unexpected error in loadChatData:', error);
+            // Set safe defaults
             setFriends([]);
             setFriendRequests([]);
             setGroupChats([]);
-            setCurrentUser(null);
+            setCurrentUser({ peer_id: null, state: null });
         } finally {
             setLoading(false);
         }
@@ -112,6 +144,28 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
         return () => clearInterval(interval);
     }, [loadChatData]);
 
+    const handleDisplayNameUpdate = (entityId, entityType, newDisplayName) => {
+        // Update the local state immediately for better UX
+        if (entityType === 'friend') {
+            setFriends(prev => prev.map(friend =>
+                friend.PeerID === entityId
+                    ? { ...friend, display_name: newDisplayName || null }
+                    : friend
+            ));
+        } else if (entityType === 'group') {
+            setGroupChats(prev => prev.map(group =>
+                group.group_id === entityId
+                    ? { ...group, name: newDisplayName || group.name || 'Group Chat' }
+                    : group
+            ));
+        }
+
+        // Call parent callback if provided
+        if (onDisplayNameUpdate) {
+            onDisplayNameUpdate(entityId, entityType, newDisplayName);
+        }
+    };
+
     const handleFriendRequestSent = () => {
         loadChatData();
     };
@@ -129,7 +183,7 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
 
     const handleSelectChat = (chat, type) => {
         if (onSelectChat) {
-            onSelectChat({ ...chat, type });
+            onSelectChat({...chat, type});
         }
     };
 
@@ -177,15 +231,15 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
             </Typography>
 
             {loading ? (
-                <Typography variant="body2" color="text.secondary" sx={{ pl: 1, py: 1 }}>
+                <Typography variant="body2" color="text.secondary" sx={{pl: 1, py: 1}}>
                     Loading {type === 'group' ? 'groups' : 'friends'}...
                 </Typography>
             ) : items.length === 0 ? (
-                <Typography variant="body2" color="text.secondary" sx={{ pl: 1, py: 1 }}>
+                <Typography variant="body2" color="text.secondary" sx={{pl: 1, py: 1}}>
                     {emptyMessage}
                 </Typography>
             ) : (
-                <List sx={{ py: 0 }}>
+                <List sx={{py: 0}}>
                     {items.map((item) => (
                         <ListItem
                             button
@@ -205,8 +259,8 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
                             }}
                         >
                             {type === 'group' ? (
-                                <Avatar sx={{ bgcolor: 'info.main', mr: 2, width: 40, height: 40 }}>
-                                    <GroupIcon />
+                                <Avatar sx={{bgcolor: 'info.main', mr: 2, width: 40, height: 40}}>
+                                    <GroupIcon/>
                                 </Avatar>
                             ) : (
                                 <Badge
@@ -217,9 +271,9 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
                                         horizontal: 'right',
                                     }}
                                     overlap="circular"
-                                    sx={{ mr: 2 }}
+                                    sx={{mr: 2}}
                                 >
-                                    <Avatar sx={{ bgcolor: 'secondary.light', width: 40, height: 40 }}>
+                                    <Avatar sx={{bgcolor: 'secondary.light', width: 40, height: 40}}>
                                         {getInitial(item)}
                                     </Avatar>
                                 </Badge>
@@ -243,6 +297,29 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
                                     color: 'text.secondary'
                                 }}
                             />
+
+                            {/* Only show EditDisplayName component for friends, not for groups */}
+                            {type === 'friend' && (
+                                <EditDisplayName
+                                    entity={item}
+                                    entityType={type}
+                                    currentDisplayName={
+                                        (() => {
+                                            // Only pass custom display name if it differs from the default
+                                            const defaultName = formatPeerId(item.PeerID);
+                                            const currentName = item.display_name;
+                                            return (currentName && currentName !== defaultName) ? currentName : '';
+                                        })()
+                                    }
+                                    onUpdate={(newDisplayName) =>
+                                        handleDisplayNameUpdate(
+                                            item.PeerID,
+                                            type,
+                                            newDisplayName
+                                        )
+                                    }
+                                />
+                            )}
                         </ListItem>
                     ))}
                 </List>
@@ -270,7 +347,7 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
                         mb: 1
                     }}
                 >
-                    <PersonIcon fontSize="large" />
+                    <PersonIcon fontSize="large"/>
                 </Avatar>
 
                 {/* Peer ID Display with Copy Button */}
@@ -311,7 +388,7 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
                                     }
                                 }}
                             >
-                                <ContentCopyIcon fontSize="inherit" />
+                                <ContentCopyIcon fontSize="inherit"/>
                             </IconButton>
                         </Tooltip>
                     )}
@@ -322,10 +399,10 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
                 </Typography>
             </Box>
 
-            <Divider />
+            <Divider/>
 
             {/* Action Buttons */}
-            <Box sx={{ p: 2, display: 'flex', gap: 1, bgcolor: 'background.paper' }}>
+            <Box sx={{p: 2, display: 'flex', gap: 1, bgcolor: 'background.paper'}}>
                 <Tooltip title="Add Friend" arrow>
                     <IconButton
                         color="primary"
@@ -338,7 +415,7 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
                             }
                         }}
                     >
-                        <PersonAddIcon />
+                        <PersonAddIcon/>
                     </IconButton>
                 </Tooltip>
 
@@ -355,7 +432,7 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
                             }
                         }}
                     >
-                        <NotificationsIcon />
+                        <NotificationsIcon/>
                         {friendRequests.length > 0 && (
                             <Badge
                                 badgeContent={friendRequests.length}
@@ -382,12 +459,12 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
                             }
                         }}
                     >
-                        <AddBoxIcon />
+                        <AddBoxIcon/>
                     </IconButton>
                 </Tooltip>
             </Box>
 
-            <Divider />
+            <Divider/>
 
             {/* Chat Lists */}
             <Box
@@ -418,13 +495,13 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
                 open={copySuccess}
                 autoHideDuration={3000}
                 onClose={handleCloseCopySnackbar}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                anchorOrigin={{vertical: 'bottom', horizontal: 'center'}}
             >
                 <Alert
                     onClose={handleCloseCopySnackbar}
                     severity="success"
                     variant="filled"
-                    sx={{ width: '100%' }}
+                    sx={{width: '100%'}}
                 >
                     Peer ID copied to clipboard!
                 </Alert>

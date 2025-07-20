@@ -87,6 +87,13 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		return nil, fmt.Errorf("failed to create key repository: %w", err)
 	}
 
+	displayNameRepo, err := storage.NewSQLiteDisplayNameRepository(db)
+	if err != nil {
+		db.Close()
+		cancel()
+		return nil, fmt.Errorf("failed to create display name repository: %w", err)
+	}
+
 	keyService := identity.NewGroupKeyStore(keyRepo, ctx)
 
 	pubsubService, err := pubsub.NewPubSubService(eventbus, ctx, appState, keyService)
@@ -117,6 +124,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		chatHandler,
 		profileHandle,
 		connectionService,
+		displayNameRepo,
 	)
 	eventbus.PublishAsync(events.ApiStartedEvent{})
 

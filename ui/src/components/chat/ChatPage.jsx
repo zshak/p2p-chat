@@ -21,15 +21,17 @@ import SendIcon from '@mui/icons-material/Send';
 import ChatMessage from './ChatMessage';
 import Sidebar from '../sidebar/Sidebar';
 import { DAEMON_STATES } from '../utils/constants';
-import { checkStatus, getFriends, getGroupChatMessages, getChatMessages } from "../../services/api.js";
+import { checkStatus, getFriends, getGroupChatMessages, getChatMessages, getDisplayNameAPI } from "../../services/api.js";
 import chatIcon from '../../../public/icon.svg';
 
 // Mock WebSocket service for now - replace with your actual implementation
 const websocketService = {
-    connect: () => {},
-    addMessageListener: (callback) => () => {},
-    sendMessage: (peerId, message) => console.log('Sending message:', { peerId, message }),
-    sendGroupMessage: (groupId, message) => console.log('Sending group message:', { groupId, message })
+    connect: () => {
+    },
+    addMessageListener: (callback) => () => {
+    },
+    sendMessage: (peerId, message) => console.log('Sending message:', {peerId, message}),
+    sendGroupMessage: (groupId, message) => console.log('Sending group message:', {groupId, message})
 };
 
 // Mock getPeerId function - replace with your actual implementation
@@ -60,6 +62,9 @@ function ChatPage() {
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
     const [isLoadingMoreMessages, setIsLoadingMoreMessages] = useState(false);
 
+    // Display name state
+    const [selectedChatDisplayName, setSelectedChatDisplayName] = useState('');
+
     // Pagination state for each chat
     const [chatPaginationState, setChatPaginationState] = useState({
         // chatId: {
@@ -69,6 +74,73 @@ function ChatPage() {
         //   currentPage: number // Current page (for display)
         // }
     });
+
+    // Function to update display names when they change
+    const handleDisplayNameUpdate = useCallback((entityId, entityType, newDisplayName) => {
+        // Update friends list if it's a friend
+        if (entityType === 'friend') {
+            setFriends(prev => prev.map(friend =>
+                friend.PeerID === entityId
+                    ? { ...friend, display_name: newDisplayName || undefined }
+                    : friend
+            ));
+        }
+
+        // Update selected chat display name if it matches
+        if (selectedChat) {
+            const currentEntityId = selectedChat.type === 'friend' ? selectedChat.PeerID : selectedChat.group_id;
+            if (currentEntityId === entityId && selectedChat.type === entityType) {
+                if (newDisplayName) {
+                    setSelectedChatDisplayName(newDisplayName);
+                } else {
+                    // Reset to default name
+                    if (selectedChat.type === 'friend') {
+                        setSelectedChatDisplayName(selectedChat.PeerID);
+                    } else {
+                        setSelectedChatDisplayName(selectedChat.name || `Group (${selectedChat.members?.length || 0})`);
+                    }
+                }
+            }
+        }
+    }, [selectedChat]);
+
+    // Load selected chat display name
+    const loadSelectedChatDisplayName = useCallback(async (chat) => {
+        if (!chat) {
+            setSelectedChatDisplayName('');
+            return;
+        }
+
+        const entityId = chat.type === 'friend' ? chat.PeerID : chat.group_id;
+        const entityType = chat.type;
+
+        // First check if we have the display name in the chat object (for friends)
+        if (chat.type === 'friend' && chat.display_name) {
+            setSelectedChatDisplayName(chat.display_name);
+            return;
+        }
+
+        try {
+            const displayNameData = await getDisplayNameAPI(entityId, entityType);
+            if (displayNameData && displayNameData.display_name) {
+                setSelectedChatDisplayName(displayNameData.display_name);
+            } else {
+                // Use default name
+                if (chat.type === 'friend') {
+                    setSelectedChatDisplayName(chat.PeerID);
+                } else {
+                    setSelectedChatDisplayName(chat.name || `Group (${chat.members?.length || 0})`);
+                }
+            }
+        } catch (error) {
+            // Display name not found, use default
+            if (chat.type === 'friend') {
+                setSelectedChatDisplayName(chat.PeerID);
+            } else {
+                setSelectedChatDisplayName(chat.name || `Group (${chat.members?.length || 0})`);
+            }
+        }
+    }, []);
 
     // Initialize component
     useEffect(() => {
@@ -235,6 +307,7 @@ function ChatPage() {
         setSelectedChat(chat);
         setMessage('');
 
+        await loadSelectedChatDisplayName(chat);
         const chatId = chat.type === 'friend' ? chat.PeerID : chat.group_id;
 
         // Check if we already have pagination state for this chat
@@ -290,11 +363,11 @@ function ChatPage() {
                     currentPage: 1
                 }
             }));
-            setMessagesByChat(prev => ({ ...prev, [chatId]: [] }));
+            setMessagesByChat(prev => ({...prev, [chatId]: []}));
         } finally {
             setIsLoadingMessages(false);
         }
-    }, [selectedChat, chatPaginationState, loadAllMessages, getLastNMessages, scrollToBottom]);
+    }, [selectedChat, chatPaginationState, loadAllMessages, getLastNMessages, scrollToBottom, loadSelectedChatDisplayName]);
 
     // Update messagesByChat when pagination state changes and ensure scroll to bottom
     useEffect(() => {
@@ -490,6 +563,7 @@ function ChatPage() {
                         onSelectChat={handleSelectChat}
                         friends={friends}
                         selectedChat={selectedChat}
+                        onDisplayNameUpdate={handleDisplayNameUpdate}
                     />
                 </Drawer>
             )}
@@ -515,6 +589,7 @@ function ChatPage() {
                         onSelectChat={handleSelectChat}
                         friends={friends}
                         selectedChat={selectedChat}
+                        onDisplayNameUpdate={handleDisplayNameUpdate}
                     />
                 </Drawer>
             )}
@@ -544,9 +619,11 @@ function ChatPage() {
                         </Avatar>
                         <Typography variant="h6" component="div" sx={{flexGrow: 1}}>
                             {selectedChat ? (
-                                selectedChat.type === 'friend'
-                                    ? (selectedChat.display_name || selectedChat.PeerID)
-                                    : (selectedChat.name || `Group (${selectedChat.members?.length || 0})`)
+                                selectedChatDisplayName || (
+                                    selectedChat.type === 'friend'
+                                        ? (selectedChat.display_name || selectedChat.PeerID)
+                                        : (selectedChat.name || `Group (${selectedChat.members?.length || 0})`)
+                                )
                             ) : 'P2P Chat'}
                         </Typography>
                         {selectedChat && (
@@ -588,7 +665,7 @@ function ChatPage() {
                                     }}
                                 >
                                     {isLoadingMoreMessages ? (
-                                        <CircularProgress size={24} />
+                                        <CircularProgress size={24}/>
                                     ) : (
                                         <Typography variant="caption" color="text.secondary">
                                             Scroll up to load more messages
@@ -604,7 +681,7 @@ function ChatPage() {
                                     alignItems: 'center',
                                     height: '100%'
                                 }}>
-                                    <CircularProgress size={40} />
+                                    <CircularProgress size={40}/>
                                 </Box>
                             ) : messagesToDisplay.length === 0 ? (
                                 <Box sx={{
@@ -628,7 +705,7 @@ function ChatPage() {
                                                 text: msg.Message,
                                                 timestamp: msg.Time,
                                             }}
-                                            currentUser={{ peerId: ownPeerId }}
+                                            currentUser={{peerId: ownPeerId}}
                                         />
                                     ))}
                                     {/* Force scroll to bottom on initial render */}
@@ -698,7 +775,7 @@ function ChatPage() {
                                     }
                                 }}
                             >
-                                <SendIcon />
+                                <SendIcon/>
                             </IconButton>
                         </Paper>
                     </>

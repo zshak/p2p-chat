@@ -25,4 +25,8 @@ func setupRoutes(mux *http.ServeMux, handler *ApiHandler) {
 	mux.HandleFunc("/group-chat/messages", handler.handleGetGroupMessages)
 
 	mux.HandleFunc("/ws", handler.handleWebSocket)
+
+	mux.HandleFunc("/profile/display-name", handler.handleSetDisplayName)
+	mux.HandleFunc("/profile/display-name/get", handler.handleGetDisplayName)
+	mux.HandleFunc("/profile/display-name/delete", handler.handleDeleteDisplayName)
 }

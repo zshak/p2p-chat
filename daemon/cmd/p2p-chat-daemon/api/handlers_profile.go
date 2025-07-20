@@ -73,7 +73,7 @@ func (h *ApiHandler) handleGetFriends(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Enhance friends data with real-time online status
+	// Enhance friends data with real-time online status and display names
 	for i := range friends {
 		// Decode peer ID to check online status
 		peerID, err := peer.Decode(friends[i].PeerID)
@@ -85,6 +85,19 @@ func (h *ApiHandler) handleGetFriends(w http.ResponseWriter, r *http.Request) {
 
 		// Get real-time online status from connection service
 		friends[i].IsOnline = h.connectionService.IsOnline(peerID)
+
+		// Get display name for this friend
+		displayName, err := h.displayNameRepo.GetByEntity(r.Context(), friends[i].PeerID, "friend")
+		if err != nil {
+			if err.Error() != "sql: no rows in result set" {
+				log.Printf("API Handler: Error getting display name for friend %s: %v", friends[i].PeerID, err)
+			}
+			// No display name found or error - leave DisplayName empty/nil
+			// The frontend will fall back to using the PeerID
+		} else {
+			// Set the display name if found
+			friends[i].DisplayName = displayName.DisplayName
+		}
 	}
 
 	// Marshal response

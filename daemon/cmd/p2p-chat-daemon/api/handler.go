@@ -7,6 +7,7 @@ import (
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/bus"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/profile"
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/storage"
 	"sync"
 )
 
@@ -17,6 +18,7 @@ type ApiHandler struct {
 	chatService       *chat.Service
 	profileService    *profile.Service
 	connectionService *connection.Service
+	displayNameRepo   storage.DisplayNameRepository // Add this line
 	wsConn            *websocket.Conn
 	wsMu              sync.RWMutex
 }
@@ -28,6 +30,7 @@ func newAPIHandler(
 	chatService *chat.Service,
 	profileService *profile.Service,
 	connectionService *connection.Service,
+	displayNameRepo storage.DisplayNameRepository, // Add this parameter
 ) *ApiHandler {
 	if appState == nil {
 		panic("appState cannot be nil for apiHandler")
@@ -39,5 +42,6 @@ func newAPIHandler(
 		chatService:       chatService,
 		profileService:    profileService,
 		connectionService: connectionService,
+		displayNameRepo:   displayNameRepo,
 	}
 }
