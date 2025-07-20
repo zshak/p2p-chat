@@ -170,6 +170,44 @@ function ChatPage() {
 
     // Add this useEffect after the initialization useEffect in your ChatPage component
 
+    // Auto-refresh status
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            try {
+                if (!document.hidden) {
+                    const statusResponse = await checkStatus();
+                    setStatus(statusResponse.data.state);
+
+                    if (statusResponse.data.state !== DAEMON_STATES.RUNNING) {
+                        navigate('/login');
+                        return;
+                    }
+
+                    setRefreshTrigger(prev => prev + 1);
+                }
+            } catch (err) {
+                console.error('Status check failed:', err);
+            }
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [navigate]);
+
+    // Smooth scroll to bottom function
+    const scrollToBottom = useCallback((behavior = 'smooth', force = false) => {
+        if (messagesEndRef.current) {
+            // For initial load, use scrollTop to ensure we're at the bottom
+            if (force && messagesContainerRef.current) {
+                messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            } else {
+                messagesEndRef.current.scrollIntoView({
+                    behavior,
+                    block: 'end'
+                });
+            }
+        }
+    }, []);
+
     useEffect(() => {
         // Connect to WebSocket
         websocketService.connect();
@@ -256,43 +294,7 @@ function ChatPage() {
 // Also make sure to replace the mock websocketService import with:
 // import websocketService from '../../services/websocket';
 
-    // Auto-refresh status
-    useEffect(() => {
-        const interval = setInterval(async () => {
-            try {
-                if (!document.hidden) {
-                    const statusResponse = await checkStatus();
-                    setStatus(statusResponse.data.state);
 
-                    if (statusResponse.data.state !== DAEMON_STATES.RUNNING) {
-                        navigate('/login');
-                        return;
-                    }
-
-                    setRefreshTrigger(prev => prev + 1);
-                }
-            } catch (err) {
-                console.error('Status check failed:', err);
-            }
-        }, 5000);
-
-        return () => clearInterval(interval);
-    }, [navigate]);
-
-    // Smooth scroll to bottom function
-    const scrollToBottom = useCallback((behavior = 'smooth', force = false) => {
-        if (messagesEndRef.current) {
-            // For initial load, use scrollTop to ensure we're at the bottom
-            if (force && messagesContainerRef.current) {
-                messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-            } else {
-                messagesEndRef.current.scrollIntoView({
-                    behavior,
-                    block: 'end'
-                });
-            }
-        }
-    }, []);
 
     // Load all messages for a chat and set up pagination
     const loadAllMessages = useCallback(async (chat) => {
