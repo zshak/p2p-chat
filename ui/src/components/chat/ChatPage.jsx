@@ -57,14 +57,7 @@ function ChatPage() {
     const [selectedChatDisplayName, setSelectedChatDisplayName] = useState('');
 
     // Pagination state for each chat
-    const [chatPaginationState, setChatPaginationState] = useState({
-        // chatId: {
-        //   allMessages: [], // All messages from backend
-        //   displayedMessages: [], // Currently displayed messages
-        //   hasMore: boolean, // Whether there are more messages to load
-        //   currentPage: number // Current page (for display)
-        // }
-    });
+    const [chatPaginationState, setChatPaginationState] = useState({});
 
     // Function to update display names when they change
     const handleDisplayNameUpdate = useCallback((entityId, entityType, newDisplayName) => {
@@ -167,8 +160,6 @@ function ChatPage() {
 
         initializeChat();
     }, [navigate]);
-
-    // Add this useEffect after the initialization useEffect in your ChatPage component
 
     // Auto-refresh status
     useEffect(() => {
@@ -289,12 +280,7 @@ function ChatPage() {
         return () => {
             removeListener();
         };
-    }, [ownPeerId, selectedChat, scrollToBottom]); // Add scrollToBottom to dependencies
-
-// Also make sure to replace the mock websocketService import with:
-// import websocketService from '../../services/websocket';
-
-
+    }, [ownPeerId, selectedChat, scrollToBottom]);
 
     // Load all messages for a chat and set up pagination
     const loadAllMessages = useCallback(async (chat) => {
@@ -549,47 +535,24 @@ function ChatPage() {
         }
     }, [messagesByChat, selectedChat, chatPaginationState, scrollToBottom]);
 
+    // FIXED: Remove immediate message addition, rely only on WebSocket echo
     const handleSendMessage = (e) => {
         e.preventDefault();
         if (!message.trim() || !selectedChat) return;
 
         const messageToSend = message;
-        setMessage('');
+        setMessage(''); // Clear input immediately for better UX
 
-        const chatId = selectedChat.type === 'friend' ? selectedChat.PeerID : selectedChat.group_id;
-        const newMessage = {
-            SenderPeerId: ownPeerId,
-            Message: messageToSend,
-            Time: new Date().toISOString(),
-            isOutgoing: true,
-            chatId: chatId,
-        };
-
-        // Add message to pagination state
-        setChatPaginationState(prev => {
-            const chatState = prev[chatId];
-            if (chatState) {
-                return {
-                    ...prev,
-                    [chatId]: {
-                        ...chatState,
-                        allMessages: [...chatState.allMessages, newMessage],
-                        displayedMessages: [...chatState.displayedMessages, newMessage]
-                    }
-                };
-            }
-            return prev;
-        });
-
-        // Send through WebSocket
+        // Send through WebSocket - don't add to state immediately
+        // The message will be added when we receive the WebSocket echo
         if (selectedChat.type === 'friend') {
             websocketService.sendMessage(selectedChat.PeerID, messageToSend);
         } else if (selectedChat.type === 'group') {
             websocketService.sendGroupMessage(selectedChat.group_id, messageToSend);
         }
 
-        // Scroll to bottom after sending
-        setTimeout(() => scrollToBottom('smooth'), 50);
+        // Don't add to state here - wait for WebSocket acknowledgment
+        // The message will appear when we receive it back through the WebSocket listener
     };
 
     const toggleDrawer = () => {
