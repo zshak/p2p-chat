@@ -10,7 +10,9 @@ import {
     ListItem,
     ListItemText,
     Tooltip,
-    Typography
+    Typography,
+    Snackbar,
+    Alert
 } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -19,8 +21,9 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import GroupIcon from '@mui/icons-material/Group';
 import AddBoxIcon from '@mui/icons-material/AddBox';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useNavigate } from 'react-router-dom';
-import { getFriendRequests, getFriends, getGroupChats } from '../../services/api';
+import { getFriendRequests, getFriends, getGroupChats, checkStatus } from '../../services/api';
 import AddFriend from '../friends/AddFriend';
 import FriendRequests from '../friends/FriendRequests';
 import CreateGroupChat from '../groupchat/CreateGroupChat.jsx';
@@ -30,10 +33,12 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
     const [friends, setFriends] = useState([]);
     const [groupChats, setGroupChats] = useState([]);
     const [friendRequests, setFriendRequests] = useState([]);
+    const [currentUser, setCurrentUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [addFriendOpen, setAddFriendOpen] = useState(false);
     const [friendRequestsOpen, setFriendRequestsOpen] = useState(false);
     const [createGroupChatOpen, setCreateGroupChatOpen] = useState(false);
+    const [copySuccess, setCopySuccess] = useState(false);
 
     const formatPeerId = (peerId) => {
         if (!peerId || peerId.length < 8) return peerId;
@@ -58,10 +63,11 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
 
     const loadChatData = useCallback(async () => {
         try {
-            const [friendsResponse, requestsResponse, groupChatsResponse] = await Promise.all([
+            const [friendsResponse, requestsResponse, groupChatsResponse, statusResponse] = await Promise.all([
                 getFriends(),
                 getFriendRequests(),
-                getGroupChats()
+                getGroupChats(),
+                checkStatus()
             ]);
 
             const validFriends = (friendsResponse.data || []).filter(friend =>
@@ -71,11 +77,16 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
             setFriends(validFriends);
             setFriendRequests(requestsResponse.data || []);
             setGroupChats(groupChatsResponse.data || []);
+            setCurrentUser({
+                peer_id: statusResponse.data?.peer_id || null,
+                state: statusResponse.data?.state || null
+            });
         } catch (error) {
             console.error('Failed to load chat data:', error);
             setFriends([]);
             setFriendRequests([]);
             setGroupChats([]);
+            setCurrentUser(null);
         } finally {
             setLoading(false);
         }
@@ -120,6 +131,32 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
         if (onSelectChat) {
             onSelectChat({ ...chat, type });
         }
+    };
+
+    const handleCopyPeerId = async () => {
+        if (!currentUser?.peer_id) return;
+
+        try {
+            await navigator.clipboard.writeText(currentUser.peer_id);
+            setCopySuccess(true);
+        } catch (err) {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = currentUser.peer_id;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                setCopySuccess(true);
+            } catch (fallbackErr) {
+                console.error('Failed to copy peer ID:', fallbackErr);
+            }
+            document.body.removeChild(textArea);
+        }
+    };
+
+    const handleCloseCopySnackbar = () => {
+        setCopySuccess(false);
     };
 
     const renderChatSection = (title, items, type, emptyMessage) => (
@@ -235,9 +272,51 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
                 >
                     <PersonIcon fontSize="large" />
                 </Avatar>
-                <Typography variant="h6" color="primary.dark" sx={{ fontWeight: 600 }}>
-                    Your Name
-                </Typography>
+
+                {/* Peer ID Display with Copy Button */}
+                <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    mb: 1,
+                    maxWidth: '100%'
+                }}>
+                    <Typography
+                        variant="body2"
+                        color="primary.dark"
+                        sx={{
+                            fontFamily: 'monospace',
+                            fontWeight: 600,
+                            fontSize: '0.75rem',
+                            wordBreak: 'break-all',
+                            textAlign: 'center',
+                            maxWidth: '150px'
+                        }}
+                    >
+                        {currentUser?.peer_id ? formatPeerId(currentUser.peer_id) : 'Loading...'}
+                    </Typography>
+
+                    {currentUser?.peer_id && (
+                        <Tooltip title="Copy full Peer ID" arrow>
+                            <IconButton
+                                size="small"
+                                onClick={handleCopyPeerId}
+                                sx={{
+                                    width: 24,
+                                    height: 24,
+                                    bgcolor: 'primary.light',
+                                    color: 'primary.contrastText',
+                                    '&:hover': {
+                                        bgcolor: 'primary.main'
+                                    }
+                                }}
+                            >
+                                <ContentCopyIcon fontSize="inherit" />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                </Box>
+
                 <Typography variant="body2" color="text.secondary">
                     Online
                 </Typography>
@@ -334,35 +413,22 @@ const Sidebar = ({ refreshTrigger = 0, onSelectChat }) => {
                 )}
             </Box>
 
-            {/* Bottom Actions */}
-            <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
-                <Button
-                    fullWidth
-                    variant="outlined"
-                    color="primary"
-                    startIcon={<SettingsIcon />}
-                    sx={{
-                        mb: 1,
-                        textTransform: 'none',
-                        fontWeight: 500
-                    }}
+            {/* Copy Success Snackbar */}
+            <Snackbar
+                open={copySuccess}
+                autoHideDuration={3000}
+                onClose={handleCloseCopySnackbar}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert
+                    onClose={handleCloseCopySnackbar}
+                    severity="success"
+                    variant="filled"
+                    sx={{ width: '100%' }}
                 >
-                    Settings
-                </Button>
-                <Button
-                    fullWidth
-                    variant="contained"
-                    color="error"
-                    startIcon={<LogoutIcon />}
-                    onClick={() => navigate('/login')}
-                    sx={{
-                        textTransform: 'none',
-                        fontWeight: 500
-                    }}
-                >
-                    Logout
-                </Button>
-            </Box>
+                    Peer ID copied to clipboard!
+                </Alert>
+            </Snackbar>
 
             {/* Modals */}
             <AddFriend
