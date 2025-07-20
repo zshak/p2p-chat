@@ -106,15 +106,19 @@ function ChatPage() {
         }
 
         try {
-            const displayNameData = await getDisplayNameAPI(entityId, entityType);
-            if (displayNameData && displayNameData.display_name) {
-                setSelectedChatDisplayName(displayNameData.display_name);
+            if (chat.type === 'group') {
+                setSelectedChatDisplayName(entityId.name);
             } else {
-                // Use default name
-                if (chat.type === 'friend') {
-                    setSelectedChatDisplayName(chat.PeerID);
+                const displayNameData = await getDisplayNameAPI(entityId, entityType);
+                if (displayNameData && displayNameData.display_name) {
+                    setSelectedChatDisplayName(displayNameData.display_name);
                 } else {
-                    setSelectedChatDisplayName(chat.name || `Group (${chat.members?.length || 0})`);
+                    // Use default name
+                    if (chat.type === 'friend') {
+                        setSelectedChatDisplayName(chat.PeerID);
+                    } else {
+                        setSelectedChatDisplayName(chat.name || `Group (${chat.members?.length || 0})`);
+                    }
                 }
             }
         } catch (error) {
