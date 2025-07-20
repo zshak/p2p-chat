@@ -21,13 +21,14 @@ import SendIcon from '@mui/icons-material/Send';
 import ChatMessage from './ChatMessage';
 import Sidebar from '../sidebar/Sidebar';
 import { DAEMON_STATES } from '../utils/constants';
-import { checkStatus, getFriends, getGroupChatMessages, getChatMessages, getDisplayNameAPI } from "../../services/api.js";
+import { checkStatus, getFriends, getGroupChatMessages, getChatMessages, getDisplayNameAPI} from "../../services/api.js";
 import chatIcon from '../../../public/icon.svg';
 import websocketService from '../../services/websocket';
 
 // Mock getPeerId function - replace with your actual implementation
 const getPeerId = () => {
-    return localStorage.getItem('userPeerId') || 'mock-peer-id';
+    const peerId = localStorage.getItem('userPeerId') || localStorage.getItem('peerID') || 'mock-peer-id';
+    return peerId.trim(); // Ensure no whitespace
 };
 
 const MESSAGES_PER_PAGE = 10;
@@ -138,8 +139,14 @@ function ChatPage() {
                     return;
                 }
 
-                const peerId = getPeerId();
+                const peerId = response.data.peer_id || getPeerId();
                 setOwnPeerId(peerId);
+
+                // Also store it in localStorage for consistency
+                if (response.data.peer_id) {
+                    localStorage.setItem('userPeerId', response.data.peer_id);
+                    localStorage.setItem('peerID', response.data.peer_id);
+                }
 
                 try {
                     const friendsResponse = await getFriends();
@@ -214,15 +221,23 @@ function ChatPage() {
             }
 
             if (data.type === 'DIRECT_MESSAGE' || data.type === 'GROUP_MESSAGE') {
-                const { sender_peer_id, message: chatMessageText } = data.payload;
+                const { sender_peer_id, message: chatMessageText, target_peer_id, group_id } = data.payload;
+
+                console.log("Processing WebSocket message:", {
+                    type: data.type,
+                    sender: sender_peer_id,
+                    message: chatMessageText,
+                    ownPeerId: ownPeerId,
+                    isMyMessage: sender_peer_id === ownPeerId
+                });
 
                 let chatId;
                 if (data.type === 'DIRECT_MESSAGE') {
-                    const { target_peer_id } = data.payload;
                     // For DMs, the chat ID is the other participant's peer ID
-                    chatId = sender_peer_id === ownPeerId ? target_peer_id : sender_peer_id;
+                    // If I sent the message, chat ID is the target
+                    // If I received the message, chat ID is the sender
+                    chatId = sender_peer_id.trim() === ownPeerId.trim() ? target_peer_id : sender_peer_id;
                 } else { // GROUP_MESSAGE
-                    const { group_id } = data.payload;
                     chatId = group_id;
                 }
 
@@ -230,13 +245,13 @@ function ChatPage() {
                     SenderPeerId: sender_peer_id,
                     Message: chatMessageText,
                     Time: data.payload.Time || new Date().toISOString(),
-                    isOutgoing: sender_peer_id === ownPeerId,
+                    isOutgoing: sender_peer_id.trim() === ownPeerId.trim(),
                     chatId: chatId,
                 };
 
                 console.log(`Adding new incoming/echoed message to chatId ${chatId}:`, newMessage);
 
-                // Add message to pagination state
+                // Update BOTH states - pagination state AND messagesByChat
                 setChatPaginationState(prev => {
                     const chatState = prev[chatId];
                     if (chatState) {
@@ -260,6 +275,15 @@ function ChatPage() {
                             }
                         };
                     }
+                });
+
+                // IMPORTANT: Also update messagesByChat
+                setMessagesByChat(prev => {
+                    const chatMessages = prev[chatId] || [];
+                    return {
+                        ...prev,
+                        [chatId]: [...chatMessages, newMessage]
+                    };
                 });
 
                 // If the new message is for the currently selected chat AND the user is near the bottom, scroll down

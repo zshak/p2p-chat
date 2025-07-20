@@ -1,14 +1,11 @@
 import React from 'react';
-import {
-    Box,
-    Paper,
-    Typography,
-    Avatar,
-} from '@mui/material';
+import {Avatar, Box, Paper, Typography,} from '@mui/material';
+import {getPeerId} from '../utils/userStore'; // Assuming this utility exists
 
-const ChatMessage = ({ message, currentUser }) => {
+
+const ChatMessage = ({message, currentUser}) => {
     // Get current user's peer ID from props or localStorage
-    const ownPeerId = currentUser?.peerId || localStorage.getItem('userPeerId') || 'mock-peer-id';
+    const ownPeerId = getPeerId(); // Get current user's peer ID
     const isMyMessage = message.sender === 'me' || message.sender === ownPeerId;
 
     const formatTime = (timestamp) => {
@@ -18,8 +15,9 @@ const ChatMessage = ({ message, currentUser }) => {
             console.error("Invalid timestamp:", timestamp);
             return '';
         }
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
     };
+
 
     const getSenderDisplayName = (senderPeerId) => {
         if (senderPeerId === ownPeerId) return 'You';
@@ -46,7 +44,7 @@ const ChatMessage = ({ message, currentUser }) => {
             }}
         >
             {!isMyMessage && (
-                <Avatar sx={{ bgcolor: 'secondary.main', mr: 1 }}>
+                <Avatar sx={{bgcolor: 'secondary.main', mr: 1}}>
                     {getSenderInitial()}
                 </Avatar>
             )}
@@ -81,7 +79,7 @@ const ChatMessage = ({ message, currentUser }) => {
                         hyphens: 'auto',
                     }}
                 >
-                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                    <Typography variant="body1" sx={{whiteSpace: 'pre-wrap'}}>
                         {message.text}
                     </Typography>
                 </Paper>
@@ -99,7 +97,7 @@ const ChatMessage = ({ message, currentUser }) => {
                 </Typography>
             </Box>
             {isMyMessage && (
-                <Avatar sx={{ bgcolor: 'primary.dark', ml: 1 }}>
+                <Avatar sx={{bgcolor: 'primary.dark', ml: 1}}>
                     Y
                 </Avatar>
             )}
