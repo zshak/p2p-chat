@@ -23,16 +23,7 @@ import Sidebar from '../sidebar/Sidebar';
 import { DAEMON_STATES } from '../utils/constants';
 import { checkStatus, getFriends, getGroupChatMessages, getChatMessages, getDisplayNameAPI } from "../../services/api.js";
 import chatIcon from '../../../public/icon.svg';
-
-// Mock WebSocket service for now - replace with your actual implementation
-const websocketService = {
-    connect: () => {
-    },
-    addMessageListener: (callback) => () => {
-    },
-    sendMessage: (peerId, message) => console.log('Sending message:', {peerId, message}),
-    sendGroupMessage: (groupId, message) => console.log('Sending group message:', {groupId, message})
-};
+import websocketService from '../../services/websocket';
 
 // Mock getPeerId function - replace with your actual implementation
 const getPeerId = () => {
@@ -176,6 +167,94 @@ function ChatPage() {
 
         initializeChat();
     }, [navigate]);
+
+    // Add this useEffect after the initialization useEffect in your ChatPage component
+
+    useEffect(() => {
+        // Connect to WebSocket
+        websocketService.connect();
+
+        // Add message listener
+        const removeListener = websocketService.addMessageListener((data) => {
+            console.log("WebSocket message received:", data);
+
+            // Check if ownPeerId is available before processing messages
+            if (!ownPeerId) {
+                console.warn("Received WebSocket message before ownPeerId was set. Message:", data);
+                return;
+            }
+
+            if (data.type === 'DIRECT_MESSAGE' || data.type === 'GROUP_MESSAGE') {
+                const { sender_peer_id, message: chatMessageText } = data.payload;
+
+                let chatId;
+                if (data.type === 'DIRECT_MESSAGE') {
+                    const { target_peer_id } = data.payload;
+                    // For DMs, the chat ID is the other participant's peer ID
+                    chatId = sender_peer_id === ownPeerId ? target_peer_id : sender_peer_id;
+                } else { // GROUP_MESSAGE
+                    const { group_id } = data.payload;
+                    chatId = group_id;
+                }
+
+                const newMessage = {
+                    SenderPeerId: sender_peer_id,
+                    Message: chatMessageText,
+                    Time: data.payload.Time || new Date().toISOString(),
+                    isOutgoing: sender_peer_id === ownPeerId,
+                    chatId: chatId,
+                };
+
+                console.log(`Adding new incoming/echoed message to chatId ${chatId}:`, newMessage);
+
+                // Add message to pagination state
+                setChatPaginationState(prev => {
+                    const chatState = prev[chatId];
+                    if (chatState) {
+                        return {
+                            ...prev,
+                            [chatId]: {
+                                ...chatState,
+                                allMessages: [...chatState.allMessages, newMessage],
+                                displayedMessages: [...chatState.displayedMessages, newMessage]
+                            }
+                        };
+                    } else {
+                        // If no chat state exists, create it
+                        return {
+                            ...prev,
+                            [chatId]: {
+                                allMessages: [newMessage],
+                                displayedMessages: [newMessage],
+                                hasMore: false,
+                                currentPage: 1
+                            }
+                        };
+                    }
+                });
+
+                // If the new message is for the currently selected chat AND the user is near the bottom, scroll down
+                if (selectedChat &&
+                    ((selectedChat.type === 'friend' && selectedChat.PeerID === chatId) ||
+                        (selectedChat.type === 'group' && selectedChat.group_id === chatId))) {
+                    const container = messagesContainerRef.current;
+                    if (container) {
+                        const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
+                        if (isAtBottom) {
+                            setTimeout(() => scrollToBottom('smooth'), 50);
+                        }
+                    }
+                }
+            }
+        });
+
+        return () => {
+            removeListener();
+        };
+    }, [ownPeerId, selectedChat, scrollToBottom]); // Add scrollToBottom to dependencies
+
+// Also make sure to replace the mock websocketService import with:
+// import websocketService from '../../services/websocket';
 
     // Auto-refresh status
     useEffect(() => {
