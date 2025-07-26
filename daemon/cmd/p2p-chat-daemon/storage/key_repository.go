@@ -10,20 +10,16 @@ import (
 	"time"
 )
 
-// KeyRepository defines the operations for persisting keys.
 type KeyRepository interface {
 	Store(ctx context.Context, key types.GroupKey) error
 
 	GetKey(ctx context.Context, groupID string) (*types.GroupKey, error)
 }
 
-// --- SQLite Implementation ---
-
 type sqliteKeyRepository struct {
 	db *sql.DB
 }
 
-// NewSQLiteKeyRepository creates a new repository instance.
 func NewSQLiteKeyRepository(database *DB) (KeyRepository, error) {
 	if database == nil {
 		return nil, errors.New("database connection is required for message repository")
@@ -31,7 +27,6 @@ func NewSQLiteKeyRepository(database *DB) (KeyRepository, error) {
 	return &sqliteKeyRepository{db: database.GetDB()}, nil
 }
 
-// Store saves a message, ensuring the conversation exists.
 func (r *sqliteKeyRepository) Store(ctx context.Context, key types.GroupKey) error {
 	sqlStmt := `
 		REPLACE INTO group_keys (group_id, group_key, name, created_at)
@@ -52,8 +47,6 @@ func (r *sqliteKeyRepository) Store(ctx context.Context, key types.GroupKey) err
 	return nil
 }
 
-// GetKey retrieves the key for a group.
-// Returns sql.ErrNoRows if not found.
 func (r *sqliteKeyRepository) GetKey(ctx context.Context, groupID string) (*types.GroupKey, error) {
 	sqlStmt := `SELECT group_id, group_key, name, created_at FROM group_keys WHERE group_id = ?;`
 	var gk types.GroupKey

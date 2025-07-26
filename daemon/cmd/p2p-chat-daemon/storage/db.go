@@ -16,14 +16,12 @@ const (
 	dbDriverName = "sqlite"
 )
 
-// DB represents the database
 type DB struct {
 	sqlDB *sql.DB
 	dsn   string
 	mu    sync.Mutex
 }
 
-// NewDB initializes the database connection and ensures schema exists.
 func NewDB(config *config.Config) (*DB, error) {
 	if config.P2P.DbPath == "" {
 		return nil, errors.New("database data directory cannot be empty")
@@ -32,36 +30,27 @@ func NewDB(config *config.Config) (*DB, error) {
 	dbPath := config.P2P.DbPath
 	log.Printf("Storage: Initializing database at %s", dbPath)
 
-	// The DSN for sqlite is just the file path.
-	// _pragma=foreign_keys(1) enables foreign key constraints.
-	// _pragma=journal_mode(WAL) enables Write-Ahead Logging for better concurrency.
-	// _pragma=busy_timeout(5000) tells connections to wait up to 5s if DB is locked.
 	dsn := fmt.Sprintf("%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", dbPath)
 
-	// sql.Open doesn't actually open a connection, just prepares the pool
-	// The connection is opened lazily on first use
 	dbHandle, err := sql.Open(dbDriverName, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare database connection pool for %s: %w", dbPath, err)
 	}
 
-	// Ping to verify connection and create the file if it doesn't exist.
 	if err := dbHandle.Ping(); err != nil {
 		dbHandle.Close()
 		return nil, fmt.Errorf("failed to connect to database %s: %w", dbPath, err)
 	}
 
-	// Set connection pool parameters
 	dbHandle.SetMaxOpenConns(5)
 	dbHandle.SetMaxIdleConns(2)
-	dbHandle.SetConnMaxLifetime(time.Hour) // Reuse connections for up to an hour
+	dbHandle.SetConnMaxLifetime(time.Hour)
 
 	database := &DB{
 		sqlDB: dbHandle,
 		dsn:   dsn,
 	}
 
-	// Ensure the necessary schema exists
 	if err := database.ensureCreation(); err != nil {
 		database.Close()
 		return nil, fmt.Errorf("database schema creation failed: %w", err)
@@ -71,10 +60,7 @@ func NewDB(config *config.Config) (*DB, error) {
 	return database, nil
 }
 
-// ensureCreation creates or updates the database tables.
 func (db *DB) ensureCreation() error {
-	// Use a transaction for schema changes if making multiple related changes
-	// For simplicity here, we execute directly.
 	schemaSQL := `
 		CREATE TABLE IF NOT EXISTS messages (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -137,7 +123,6 @@ func (db *DB) ensureCreation() error {
 	return nil
 }
 
-// Close closes the database connection pool.
 func (db *DB) Close() error {
 	log.Println("Storage: Closing database connection pool...")
 	if db.sqlDB == nil {
@@ -153,7 +138,6 @@ func (db *DB) Close() error {
 	return err
 }
 
-// GetDB returns the raw *sql.DB handle for repository use.
 func (db *DB) GetDB() *sql.DB {
 	return db.sqlDB
 }

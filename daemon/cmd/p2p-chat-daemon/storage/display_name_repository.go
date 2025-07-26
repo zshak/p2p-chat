@@ -9,17 +9,15 @@ import (
 	"time"
 )
 
-// DisplayName represents a custom display name for a friend or group
 type DisplayName struct {
 	ID          int64     `json:"id"`
-	EntityID    string    `json:"entity_id"`   // peer_id or group_id
-	EntityType  string    `json:"entity_type"` // 'friend' or 'group'
+	EntityID    string    `json:"entity_id"`
+	EntityType  string    `json:"entity_type"`
 	DisplayName string    `json:"display_name"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-// DisplayNameRepository defines operations for managing display names
 type DisplayNameRepository interface {
 	Store(ctx context.Context, displayName DisplayName) error
 	Update(ctx context.Context, entityID, entityType, newDisplayName string) error
@@ -28,13 +26,10 @@ type DisplayNameRepository interface {
 	GetAllByType(ctx context.Context, entityType string) ([]DisplayName, error)
 }
 
-// --- SQLite Implementation ---
-
 type sqliteDisplayNameRepository struct {
 	db *sql.DB
 }
 
-// NewSQLiteDisplayNameRepository creates a new display name repository
 func NewSQLiteDisplayNameRepository(database *DB) (DisplayNameRepository, error) {
 	if database == nil || database.GetDB() == nil {
 		return nil, errors.New("database connection required for display name repository")
@@ -42,7 +37,6 @@ func NewSQLiteDisplayNameRepository(database *DB) (DisplayNameRepository, error)
 	return &sqliteDisplayNameRepository{db: database.GetDB()}, nil
 }
 
-// Store saves a new display name
 func (r *sqliteDisplayNameRepository) Store(ctx context.Context, displayName DisplayName) error {
 	now := time.Now()
 	sqlStmt := `
@@ -66,7 +60,6 @@ func (r *sqliteDisplayNameRepository) Store(ctx context.Context, displayName Dis
 	return nil
 }
 
-// Update modifies an existing display name
 func (r *sqliteDisplayNameRepository) Update(ctx context.Context, entityID, entityType, newDisplayName string) error {
 	sqlStmt := `
 		UPDATE display_names 
@@ -92,7 +85,6 @@ func (r *sqliteDisplayNameRepository) Update(ctx context.Context, entityID, enti
 	return nil
 }
 
-// GetByEntity retrieves a display name for a specific entity
 func (r *sqliteDisplayNameRepository) GetByEntity(ctx context.Context, entityID, entityType string) (*DisplayName, error) {
 	sqlStmt := `
 		SELECT id, entity_id, entity_type, display_name, created_at, updated_at
@@ -125,7 +117,6 @@ func (r *sqliteDisplayNameRepository) GetByEntity(ctx context.Context, entityID,
 	return &dn, nil
 }
 
-// Delete removes a display name
 func (r *sqliteDisplayNameRepository) Delete(ctx context.Context, entityID, entityType string) error {
 	sqlStmt := `DELETE FROM display_names WHERE entity_id = ? AND entity_type = ?`
 
@@ -147,7 +138,6 @@ func (r *sqliteDisplayNameRepository) Delete(ctx context.Context, entityID, enti
 	return nil
 }
 
-// GetAllByType retrieves all display names for a specific entity type
 func (r *sqliteDisplayNameRepository) GetAllByType(ctx context.Context, entityType string) ([]DisplayName, error) {
 	sqlStmt := `
 		SELECT id, entity_id, entity_type, display_name, created_at, updated_at
