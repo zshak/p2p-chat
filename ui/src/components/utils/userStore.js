@@ -1,4 +1,3 @@
-// src/utils/userStore.js
 export const getPeerId = () => {
     return localStorage.getItem('peerID') || '';
 };

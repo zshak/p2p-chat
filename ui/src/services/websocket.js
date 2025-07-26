@@ -1,5 +1,4 @@
-// src/services/websocket.js
-const API_BASE_URL = import.meta.env.VITE_BACKEND_API_BASE_URL  || '127.0.0.1:59578';
+const API_BASE_URL = import.meta.env.VITE_BACKEND_API_BASE_URL || '127.0.0.1:59578';
 
 class WebSocketService {
     constructor() {
@@ -12,13 +11,10 @@ class WebSocketService {
             console.log('WebSocket already connected');
             return;
         }
-
         this.socket = new WebSocket('ws://' + API_BASE_URL + '/ws');
-
         this.socket.onopen = () => {
             console.log('WebSocket connection established');
         };
-
         this.socket.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
@@ -27,24 +23,20 @@ class WebSocketService {
                 console.error('Error parsing WebSocket message:', error);
             }
         };
-
         this.socket.onerror = (error) => {
             console.error('WebSocket error:', error);
         };
-
         this.socket.onclose = (event) => {
             console.log('WebSocket connection closed:', event.code, event.reason);
-            // Try to reconnect after a delay
             setTimeout(() => this.connect(), 5000);
         };
     }
 
-    sendMessage(targetPeerId, message) { // for Direct Messages
+    sendMessage(targetPeerId, message) {
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket not connected');
             return false;
         }
-
         const payload = {
             type: 'DIRECT_MESSAGE',
             payload: {
@@ -52,17 +44,15 @@ class WebSocketService {
                 message: message
             }
         };
-
         this.socket.send(JSON.stringify(payload));
         return true;
     }
 
-    sendGroupMessage(groupId, message) { // for Group Messages
+    sendGroupMessage(groupId, message) {
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket not connected');
             return false;
         }
-
         const payload = {
             type: 'GROUP_MESSAGE',
             payload: {
@@ -70,7 +60,6 @@ class WebSocketService {
                 message: message
             }
         };
-
         this.socket.send(JSON.stringify(payload));
         return true;
     }
@@ -91,6 +80,5 @@ class WebSocketService {
     }
 }
 
-// Create a singleton instance
 const websocketService = new WebSocketService();
 export default websocketService;

@@ -25,20 +25,6 @@ export const LOGIN_STEP_MESSAGES = {
     }
 };
 
-export const SAMPLE_MESSAGES = [
-    { id: 1, sender: 'other', text: 'Hello! How are you today?', timestamp: new Date().setMinutes(new Date().getMinutes() - 60) },
-    { id: 2, sender: 'me', text: 'Hi there! I\'m doing well, thanks for asking. How about you?', timestamp: new Date().setMinutes(new Date().getMinutes() - 55) },
-    { id: 3, sender: 'other', text: 'I\'m great! Just working on this P2P Chat implementation.', timestamp: new Date().setMinutes(new Date().getMinutes() - 30) },
-    { id: 4, sender: 'me', text: 'That sounds interesting! How is it going so far?', timestamp: new Date().setMinutes(new Date().getMinutes() - 28) },
-    { id: 5, sender: 'other', text: 'It\'s challenging but fun. I\'m learning a lot about WebSockets and P2P communication.', timestamp: new Date().setMinutes(new Date().getMinutes() - 25) },
-];
-
-export const ACTIVE_USERS = [
-    { id: 1, name: 'Alice', status: 'online' },
-    { id: 2, name: 'Bob', status: 'online' },
-    { id: 3, name: 'Charlie', status: 'offline' },
-];
-
 export const DAEMON_STATES = {
     WAITING_FOR_PASSWORD: 'Waiting for Password via API',
     WAITING_FOR_KEY: 'Waiting for Key Setup via API',

@@ -1,17 +1,9 @@
-import React, { useState } from 'react';
-import {
-    Box,
-    Typography,
-    Button,
-    TextField,
-    Alert,
-    Paper,
-    Avatar,
-} from '@mui/material';
+import React, {useState} from 'react';
+import {Alert, Avatar, Box, Button, Paper, TextField, Typography,} from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import chatIcon from '../../../public/icon.svg';
 
-const RegisterForm = ({ handleRegister, error, loading, isMobile }) => {
+const RegisterForm = ({handleRegister, error, loading, isMobile}) => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [localError, setLocalError] = useState('');
@@ -19,22 +11,18 @@ const RegisterForm = ({ handleRegister, error, loading, isMobile }) => {
     const handleSubmit = (e) => {
         e.preventDefault();
         setLocalError('');
-
         if (!password.trim()) {
             setLocalError('Password cannot be empty');
             return;
         }
-
         if (password !== confirmPassword) {
             setLocalError('Passwords do not match');
             return;
         }
-
         if (password.length < 6) {
             setLocalError('Password must be at least 6 characters long');
             return;
         }
-
         handleRegister(password);
     };
 
@@ -71,26 +59,26 @@ const RegisterForm = ({ handleRegister, error, loading, isMobile }) => {
             </Box>
 
             {(error || localError) && (
-                <Alert severity="error" sx={{ mb: 2, borderRadius: 1 }}>
+                <Alert severity="error" sx={{mb: 2, borderRadius: 1}}>
                     {error || localError}
                 </Alert>
             )}
 
-            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+            <Box component="form" onSubmit={handleSubmit} sx={{mt: 1}}>
                 <Box sx={{
                     display: 'flex',
                     alignItems: 'center',
                     mb: 2
                 }}>
-                    <Avatar sx={{ bgcolor: 'secondary.main', mr: 2 }}>
-                        <LockOutlinedIcon />
+                    <Avatar sx={{bgcolor: 'secondary.main', mr: 2}}>
+                        <LockOutlinedIcon/>
                     </Avatar>
                     <Typography variant="h6">
                         Create Account
                     </Typography>
                 </Box>
 
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{mb: 2}}>
                     Set up your secure chat by creating a password to protect your encryption keys.
                 </Typography>
 
@@ -106,7 +94,7 @@ const RegisterForm = ({ handleRegister, error, loading, isMobile }) => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     variant="outlined"
-                    sx={{ mb: 2 }}
+                    sx={{mb: 2}}
                     disabled={loading}
                     autoFocus
                 />
@@ -122,7 +110,7 @@ const RegisterForm = ({ handleRegister, error, loading, isMobile }) => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     variant="outlined"
-                    sx={{ mb: 2 }}
+                    sx={{mb: 2}}
                     disabled={loading}
                 />
                 <Button

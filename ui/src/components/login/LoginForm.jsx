@@ -1,15 +1,6 @@
 import React from 'react';
-import {
-    Box,
-    Typography,
-    TextField,
-    Button,
-    Alert,
-    Avatar,
-    Paper,
-} from '@mui/material';
+import {Alert, Avatar, Box, Button, Paper, TextField, Typography,} from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-// import ChatIcon from '@mui/icons-material/Chat';
 import chatIcon from '../../../public/icon.svg';
 
 const LoginForm = ({
@@ -51,16 +42,16 @@ const LoginForm = ({
                 </Typography>
             </Box>
 
-            {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 1 }}>{error}</Alert>}
+            {error && <Alert severity="error" sx={{mb: 2, borderRadius: 1}}>{error}</Alert>}
 
-            <Box component="form" onSubmit={handlePasswordSubmit} sx={{ mt: 1 }}>
+            <Box component="form" onSubmit={handlePasswordSubmit} sx={{mt: 1}}>
                 <Box sx={{
                     display: 'flex',
                     alignItems: 'center',
                     mb: 2
                 }}>
-                    <Avatar sx={{ bgcolor: 'secondary.main', mr: 2 }}>
-                        <LockOutlinedIcon />
+                    <Avatar sx={{bgcolor: 'secondary.main', mr: 2}}>
+                        <LockOutlinedIcon/>
                     </Avatar>
                     <Typography variant="h6">
                         Enter Password
@@ -79,7 +70,7 @@ const LoginForm = ({
                     onChange={(e) => setPassword(e.target.value)}
                     autoFocus
                     variant="outlined"
-                    sx={{ mb: 2 }}
+                    sx={{mb: 2}}
                 />
                 <Button
                     type="submit"

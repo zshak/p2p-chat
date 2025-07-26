@@ -8,19 +8,19 @@ import { setPeerId } from './components/utils/userStore.js';
 const theme = createTheme({
     palette: {
         primary: {
-            main: '#E91E63', // Pink
+            main: '#E91E63',
             light: '#F48FB1',
             dark: '#C2185B',
             contrastText: '#fff',
         },
         secondary: {
-            main: '#FF4081', // Pink accent
+            main: '#FF4081',
             light: '#FF80AB',
             dark: '#F50057',
             contrastText: '#fff',
         },
         background: {
-            default: '#FDF5F7', // Very light pink background
+            default: '#FDF5F7',
             paper: '#fff',
         },
     },
