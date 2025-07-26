@@ -27,7 +27,6 @@ import (
 	"time"
 )
 
-// Service manages the chat protocol
 type Service struct {
 	appState             *core.AppState
 	bus                  *bus.EventBus
@@ -126,8 +125,6 @@ func (s *Service) handleChatStream(stream network.Stream) {
 	}
 
 	message := string(messageBytes)
-
-	// Trim trailing newline
 	message = strings.TrimSpace(message)
 
 	log.Printf("Chat: Received message from %s: <<< %s >>>", peerID.ShortString(), message)
@@ -141,7 +138,6 @@ func (s *Service) handleChatStream(stream network.Stream) {
 	}
 	s.bus.PublishAsync(events.MessageReceivedEvent{Message: messageEvent})
 
-	// Alternatively, the sender could close it.
 	stream.Close()
 }
 
@@ -172,7 +168,6 @@ func (s *Service) SendMessage(targetPeerId string, message string) error {
 			return errors.New(fmt.Sprintf("Cannot connect to peer %s: No known addresses", targetPID.ShortString()))
 		}
 
-		// Use a separate context and timeout for the connection attempt
 		connectCtx, connectCancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer connectCancel()
 
@@ -199,7 +194,6 @@ func (s *Service) SendMessage(targetPeerId string, message string) error {
 	}
 	log.Printf("Chat API: Stream opened successfully to %s", targetPID.ShortString())
 
-	// --- Send Message ---
 	messageBytes := []byte(message)
 	messageLen := uint32(len(messageBytes))
 
@@ -234,9 +228,6 @@ func (s *Service) SendMessage(targetPeerId string, message string) error {
 	s.bus.PublishAsync(events.MessageSentEvent{Message: messageEvent})
 	log.Printf("Chat API: Message sent successfully to %s", targetPID.ShortString())
 
-	// --- Close Stream (an ara ar vici gadasawyvetia) ---
-	// Closing the stream signals the other side we're done writing.
-	// Our simple receiver closes after reading one line anyway.
 	err = stream.Close()
 	if err != nil {
 		log.Printf("Chat API: Error closing stream to %s: %v", targetPID.ShortString(), err)
@@ -287,7 +278,6 @@ func (s *Service) CreateGroup(peers []string, groupChatName string) error {
 				return errors.New(fmt.Sprintf("Cannot connect to peer %s: No known addresses", targetPID.ShortString()))
 			}
 
-			// Use a separate context and timeout for the connection attempt
 			connectCtx, connectCancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer connectCancel()
 
@@ -312,7 +302,6 @@ func (s *Service) CreateGroup(peers []string, groupChatName string) error {
 		}
 		log.Printf("GROUP Chat API: Stream opened successfully to %s", targetPID.ShortString())
 
-		// --- Send Group Chat Request ---
 		writer := bufio.NewWriter(stream)
 
 		_, err = writer.Write(requestBytes)

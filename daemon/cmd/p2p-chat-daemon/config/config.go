@@ -34,12 +34,10 @@ type P2PConfig struct {
 	MDNSServiceTag      string
 }
 
-// APIConfig holds settings for the control API.
 type APIConfig struct {
 	ListenAddr string
 }
 
-// Config holds the overall application configuration.
 type Config struct {
 	P2P         P2PConfig
 	API         APIConfig
@@ -53,14 +51,12 @@ func Load() (*Config, error) {
 	discoverySvcID := flag.String("discoverysvc", "p2p-chat-daemon", "Service name tag for DHT discovery.")
 	enableMDNS := flag.Bool("mdns", false, "Enable mDNS local discovery.")
 	mdnsTag := flag.String("mdnstag", "p2p-chat-daemon.local", "Service tag for mDNS discovery.")
-	// Example: Add flag for API address if needed
 	apiListenAddr := flag.String("api", defaultAPIAddr, "Host and port for the API server (e.g., 127.0.0.1:0)")
 	keyFileName := flag.String("key", defaultKeyFileName, "Private key file name")
 	dbFileName := flag.String("db", "chat.db", "Database file name")
 
 	flag.Parse()
 
-	// Determine App Data Directory
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return nil, fmt.Errorf("could not determine user config directory: %w", err)
@@ -93,7 +89,6 @@ func Load() (*Config, error) {
 				"/ip6/::/tcp/0",
 				"/ip4/0.0.0.0/udp/0/quic-v1",
 				"/ip6/::/udp/0/quic-v1",
-				// Add WebRTC/WebTransport/WS
 			},
 			BootstrapPeers:      bootstrapPeers,
 			UsePublicBootstraps: *usePubBootstraps,

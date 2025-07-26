@@ -6,24 +6,24 @@ import (
 )
 
 type ChatMessage struct {
-	ID              int64     // Database ID
-	RecipientPeerId string    // Peer ID string of the other participant
-	SenderPeerID    string    // Actual sender's Peer ID string
-	SendTime        time.Time // Use time.Time for easier handling
+	ID              int64
+	RecipientPeerId string
+	SenderPeerID    string
+	SendTime        time.Time
 	Content         string
 	IsOutgoing      bool
 }
 
 type StoredMessage struct {
-	ID              int64     // Database ID
-	RecipientPeerId string    // Peer ID string of the other participant
-	SenderPeerID    string    // Actual sender's Peer ID string
-	SendTime        time.Time // Use time.Time for easier handling
+	ID              int64
+	RecipientPeerId string
+	SenderPeerID    string
+	SendTime        time.Time
 	Content         []byte
 	IsOutgoing      bool
 }
 
-type FriendStatus int // Use an integer underlying type
+type FriendStatus int
 
 const (
 	FriendStatusNone     FriendStatus = iota // 0 - Default, no relationship/request exists
@@ -51,15 +51,14 @@ func (s FriendStatus) String() string {
 
 // FriendRelationship represents the stored state between two peers.
 type FriendRelationship struct {
-	PeerID      string       // The Peer ID string of the other party
-	Status      FriendStatus // Our view of the relationship status
-	RequestedAt time.Time    // Timestamp when request was sent/received
-	ApprovedAt  time.Time    // Timestamp when approved
-	IsOnline    bool         // is user Online currently
-	DisplayName string       `json:"display_name,omitempty"`
+	PeerID      string
+	Status      FriendStatus
+	RequestedAt time.Time
+	ApprovedAt  time.Time
+	IsOnline    bool
+	DisplayName string `json:"display_name,omitempty"`
 }
 
-// GroupKey represents the group key.
 type GroupKey struct {
 	GroupId   string
 	Key       []byte
@@ -67,7 +66,6 @@ type GroupKey struct {
 	CreatedAt time.Time
 }
 
-// StoredGroupMessage represents the group message.
 type StoredGroupMessage struct {
 	ID               int64
 	GroupID          string
