@@ -2,8 +2,10 @@ package api
 
 import (
 	"context"
+	"embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -13,9 +15,15 @@ import (
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/profile"
 	"p2p-chat-daemon/cmd/p2p-chat-daemon/storage"
+	"strings"
 )
 
-// StartAPIServer initializes and starts the HTTP API server.
+// Embed the UI files at build time
+//
+//go:embed dist/*
+var uiFiles embed.FS
+
+// StartAPIServer initializes and starts the HTTP API server with embedded UI.
 func StartAPIServer(
 	ctx context.Context,
 	addr string,
@@ -35,7 +43,11 @@ func StartAPIServer(
 
 	mux := http.NewServeMux()
 
+	// Setup API routes
 	setupRoutes(mux, handler)
+
+	// Setup UI routes
+	setupUIRoutes(mux)
 
 	// Create HTTP server
 	server := &http.Server{
@@ -45,18 +57,69 @@ func StartAPIServer(
 	}
 
 	go func() {
-		log.Printf("API server starting on %s", server.Addr)
+		log.Printf("Unified server (UI + API) starting on %s", server.Addr)
 		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Printf("API server error: %v", err)
+			log.Printf("Unified server error: %v", err)
 			appState.Mu.Lock()
 			appState.State = core.StateError
-			appState.LastError = fmt.Errorf("API server failed: %w", err)
+			appState.LastError = fmt.Errorf("unified server failed: %w", err)
 			appState.Mu.Unlock()
 		}
-		log.Println("API server stopped serving.")
+		log.Println("Unified server stopped serving.")
 	}()
 
 	return listener, server, handler, nil
+}
+
+// setupUIRoutes configures the UI routes for serving the embedded React app
+func setupUIRoutes(mux *http.ServeMux) {
+	// Get the UI files subdirectory
+	uiFS, err := fs.Sub(uiFiles, "dist")
+	if err != nil {
+		log.Printf("Warning: Could not access embedded UI files: %v", err)
+		// Fallback handler for when UI is not embedded
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/" {
+				http.Error(w, "UI not available in this build", http.StatusNotFound)
+				return
+			}
+			http.NotFound(w, r)
+		})
+		return
+	}
+
+	// Create file server for static assets
+	fileServer := http.FileServer(http.FS(uiFS))
+
+	// Handle all non-API routes
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			http.NotFound(w, r)
+			return
+		}
+
+		path := strings.TrimPrefix(r.URL.Path, "/")
+
+		// For SPA routing, serve index.html for all routes that don't correspond to actual files
+		if path != "/" && !strings.Contains(path, ".") {
+			// Check if the file exists
+			if _, err := fs.Stat(uiFS, strings.TrimPrefix(path, "/")); err != nil {
+				// File doesn't exist, serve index.html for SPA routing
+				r.URL.Path = "/"
+			}
+		}
+
+		// Set proper MIME types for specific file extensions
+		if strings.HasSuffix(path, ".js") {
+			w.Header().Set("Content-Type", "application/javascript")
+		} else if strings.HasSuffix(path, ".css") {
+			w.Header().Set("Content-Type", "text/css")
+		} else if strings.HasSuffix(path, ".html") {
+			w.Header().Set("Content-Type", "text/html")
+		}
+
+		fileServer.ServeHTTP(w, r)
+	})
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
@@ -65,8 +128,12 @@ func corsMiddleware(next http.Handler) http.Handler {
 		origin := r.Header.Get("Origin")
 
 		// Check if the origin is allowed
-		if origin == "http://localhost:5173" || origin == "http://localhost:5174" {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
+		if origin == "" ||
+			origin == "http://localhost:5173" ||
+			origin == "http://localhost:5174" ||
+			strings.HasPrefix(origin, "http://127.0.0.1:") ||
+			strings.HasPrefix(origin, "http://localhost:") {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
 		}
 
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
