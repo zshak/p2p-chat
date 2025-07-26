@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_BACKEND_API_BASE_URL || '127.0.0.1:59578';
+// const API_BASE_URL = import.meta.env.VITE_BACKEND_API_BASE_URL || '127.0.0.1:59578';
+const API_BASE_URL = import.meta.env.VITE_BACKEND_API_BASE_URL || window.location.host;
 
 class WebSocketService {
     constructor() {
@@ -11,7 +12,15 @@ class WebSocketService {
             console.log('WebSocket already connected');
             return;
         }
-        this.socket = new WebSocket('ws://' + API_BASE_URL + '/ws');
+
+        // Construct WebSocket URL properly
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host; // This includes port if present
+        const wsUrl = `${protocol}//${host}/api/ws`;
+
+        console.log('Connecting to WebSocket:', wsUrl); // Debug line
+
+        this.socket = new WebSocket(wsUrl);
         this.socket.onopen = () => {
             console.log('WebSocket connection established');
         };
