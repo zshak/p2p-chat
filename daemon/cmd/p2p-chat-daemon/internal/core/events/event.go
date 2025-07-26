@@ -20,7 +20,8 @@ type KeyLoadingFailedEvent struct {
 }
 
 type KeyGeneratedEvent struct {
-	Key crypto.PrivKey
+	Key   crypto.PrivKey
+	DbKey []byte
 }
 
 type UserAuthenticatedEvent struct {

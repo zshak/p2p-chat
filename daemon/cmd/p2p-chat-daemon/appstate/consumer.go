@@ -69,7 +69,7 @@ func (c *Consumer) handleEvent(event interface{}) {
 
 	case events.KeyGeneratedEvent:
 		log.Println("Key Generated Successfully")
-		c.handleKeyProvided(event.Key, nil)
+		c.handleKeyProvided(event.Key, event.DbKey)
 		return
 
 	case events.UserAuthenticatedEvent:

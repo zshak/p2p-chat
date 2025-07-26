@@ -46,7 +46,9 @@ func (h *ApiHandler) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.eventBus.PublishAsync(events.KeyGeneratedEvent{Key: privKey})
+	privKey, dbKey, err := identity.LoadAndDecryptKey(keyPath, []byte(req.Password))
+
+	h.eventBus.PublishAsync(events.KeyGeneratedEvent{Key: privKey, DbKey: dbKey})
 
 	log.Printf("API: Key created and saved successfully.")
 	w.WriteHeader(http.StatusCreated)
