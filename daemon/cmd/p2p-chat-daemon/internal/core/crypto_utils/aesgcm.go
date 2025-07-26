@@ -7,17 +7,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core" // For CryptoConfig
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
 )
 
 // EncryptDataWithKey encrypts data using a provided key and returns (nonce || ciphertext).
 func EncryptDataWithKey(key []byte, plaintext []byte, cfg core.CryptoConfig) ([]byte, error) {
-	if len(key) != int(cfg.ArgonKeyLen) { // Use key length from config
+	if len(key) != int(cfg.ArgonKeyLen) {
 		return nil, fmt.Errorf("invalid key length: got %d, want %d", len(key), cfg.ArgonKeyLen)
 	}
 	if plaintext == nil {
 		return nil, nil
-	} // Handle nil plaintext
+	}
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -28,7 +28,7 @@ func EncryptDataWithKey(key []byte, plaintext []byte, cfg core.CryptoConfig) ([]
 		return nil, fmt.Errorf("failed to create AES-GCM: %w", err)
 	}
 
-	nonce := make([]byte, cfg.NonceLen) // Use nonce length from config
+	nonce := make([]byte, cfg.NonceLen)
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		return nil, fmt.Errorf("failed to generate nonce: %w", err)
 	}

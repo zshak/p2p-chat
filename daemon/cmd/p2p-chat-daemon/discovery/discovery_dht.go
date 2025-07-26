@@ -37,10 +37,8 @@ func NewDHTDiscovery(ctx context.Context, cfg *config.P2PConfig, host *host.Host
 
 	log.Println("Setting up global DHT discovery...")
 
-	// Create a DHT client mode or server mode based on need
-
 	opts := []dhtopts.Option{
-		dht.Mode(dht.ModeAuto), // Client/Auto mode usually sufficient
+		dht.Mode(dht.ModeAuto),
 		dht.BootstrapPeers(cfg.BootstrapPeers...),
 	}
 
@@ -53,7 +51,6 @@ func NewDHTDiscovery(ctx context.Context, cfg *config.P2PConfig, host *host.Host
 		return nil, fmt.Errorf("failed to create DHT: %w", err)
 	}
 
-	// Bootstrap the DHT to start discovering peers
 	if err = kadDHT.Bootstrap(ctx); err != nil {
 		return nil, fmt.Errorf("failed to bootstrap DHT: %w", err)
 	}
@@ -117,17 +114,14 @@ func (d *DHTDiscovery) connectToBootstrapPeers() error {
 func (d *DHTDiscovery) Run() {
 	log.Println("P2P DHT Discovery: Starting background loop...")
 
-	// Wait until DHT is minimally ready
 	if !d.waitForDHTReadiness() {
 		log.Println("P2P DHT Discovery: Exiting because context was cancelled before DHT was ready.")
 		return
 	}
 
-	// Initial advertise and find
 	go d.advertise(d.ctx)
 	go d.findPeers(d.ctx)
 
-	// Periodic ticker
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 
@@ -147,7 +141,6 @@ func (d *DHTDiscovery) Run() {
 // Returns true if DHT is ready, false if context cancelled first.
 func (d *DHTDiscovery) waitForDHTReadiness() bool {
 	for {
-		// Use RoutingTable().Size() for a more accurate count of 'good' peers
 		if d.dht.RoutingTable().Size() > 0 {
 			log.Printf("P2P DHT Discovery: DHT Routing Table has %d peers, ready.", d.dht.RoutingTable().Size())
 			return true
@@ -156,9 +149,8 @@ func (d *DHTDiscovery) waitForDHTReadiness() bool {
 
 		select {
 		case <-d.ctx.Done():
-			return false // Context cancelled
-		case <-time.After(10 * time.Second): // Check every 10 seconds
-			// Continue loop
+			return false
+		case <-time.After(10 * time.Second):
 		}
 	}
 }
@@ -188,29 +180,23 @@ func (d *DHTDiscovery) findPeers(ctx context.Context) {
 	connectedCount := int32(0)
 
 	for pinfo := range peerChan {
-		// Run connection attempts in parallel
 		wg.Add(1)
 		go func(pi peer.AddrInfo) {
 			defer wg.Done()
 
-			// Skip self or peers with no addresses
 			if pi.ID == (*d.host).ID() || len(pi.Addrs) == 0 {
 				return
 			}
-			// Skip already connected peers
 			if (*d.host).Network().Connectedness(pi.ID) == network.Connected {
 				return
 			}
-
-			// Check context before attempting connection
 			if d.ctx.Err() != nil {
 				return
 			}
 
-			connectCtx, connectCancel := context.WithTimeout(d.ctx, 20*time.Second) // Use service context as parent
+			connectCtx, connectCancel := context.WithTimeout(d.ctx, 20*time.Second)
 			defer connectCancel()
 
-			// log.Printf("P2P DHT Discovery: Attempting connection to discovered peer: %s", pi.ID.ShortString())
 			if err := (*d.host).Connect(connectCtx, pi); err == nil {
 				log.Printf("P2P DHT Discovery: Connected to discovered peer: %s", pi.ID.ShortString())
 				atomic.AddInt32(&connectedCount, 1)
@@ -221,14 +207,14 @@ func (d *DHTDiscovery) findPeers(ctx context.Context) {
 				//     log.Printf("P2P DHT Discovery: Failed connection to %s: %v", pi.ID.ShortString(), err)
 				// }
 			}
-		}(pinfo) // Pass pinfo by value to goroutine
+		}(pinfo)
 	}
-	wg.Wait() // Wait for all connection attempts in this round
+	wg.Wait()
 
 	count := atomic.LoadInt32(&connectedCount)
 	if count > 0 {
 		log.Printf("P2P DHT Discovery: Connected to %d new peers this round.", count)
 	} else {
-		// log.Println("P2P DHT Discovery: No new peers connected this round.") // Can be noisy
+		// log.Println("P2P DHT Discovery: No new peers connected this round.")
 	}
 }

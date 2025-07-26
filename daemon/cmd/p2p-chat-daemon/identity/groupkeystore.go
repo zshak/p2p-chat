@@ -34,7 +34,6 @@ func NewGroupKeyStore(keyRepo storage.KeyRepository, ctx context.Context) *Group
 }
 
 // GenerateNewKey creates a new symmetric key for a group and stores it.
-// In a real app, this would only be done by a group admin/creator.
 func (s *GroupKeyStore) GenerateNewKey(groupID string, groupName string) ([]byte, error) {
 	key := make([]byte, groupKeySize)
 	if _, err := io.ReadFull(rand.Reader, key); err != nil {
@@ -66,7 +65,7 @@ func (s *GroupKeyStore) GetKey(groupID string) ([]byte, bool) {
 // Encrypt encrypts plaintext using the group's key.
 // Returns ciphertext (nonce prefixed).
 func (s *GroupKeyStore) Encrypt(groupID string, plaintext []byte) ([]byte, error) {
-	key, ok := s.GetKey(groupID) // GetKey now returns a copy
+	key, ok := s.GetKey(groupID)
 	if !ok {
 		return nil, fmt.Errorf("no key found for group %s to encrypt", groupID)
 	}
@@ -91,7 +90,7 @@ func (s *GroupKeyStore) Encrypt(groupID string, plaintext []byte) ([]byte, error
 
 // Decrypt decrypts ciphertext (nonce prefixed) using the group's key.
 func (s *GroupKeyStore) Decrypt(groupID string, ciphertextWithNonce []byte) ([]byte, error) {
-	key, ok := s.GetKey(groupID) // GetKey now returns a copy
+	key, ok := s.GetKey(groupID)
 	if !ok {
 		return nil, fmt.Errorf("no key found for group %s to decrypt", groupID)
 	}

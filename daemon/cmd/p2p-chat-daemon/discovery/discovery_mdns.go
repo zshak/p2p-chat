@@ -90,8 +90,6 @@ func (m *MDNSDiscovery) Stop() error {
 	return err
 }
 
-// --- Notifee Methods ---
-
 func (n *discoveryNotifee) HandlePeerFound(pi peer.AddrInfo) {
 	if n.ctx.Err() != nil {
 		return

@@ -17,13 +17,12 @@ import (
 
 const (
 	keyPermissions = 0600 // Read/write only
-	// Argon2id parameters
-	argonTime    = 1
-	argonMemory  = 64 * 1024 // 64 MB
-	argonThreads = 4
-	argonKeyLen  = 32 // AES-256
-	saltLen      = 16
-	nonceLen     = 12
+	argonTime      = 1
+	argonMemory    = 64 * 1024 // 64 MB
+	argonThreads   = 4
+	argonKeyLen    = 32 // AES-256
+	saltLen        = 16
+	nonceLen       = 12
 )
 
 // GenerateAndSaveEncryptedKey generates a new Ed25519 key, encrypts it with a password, and saves it.
@@ -119,7 +118,6 @@ func LoadAndDecryptKey(keyPath string, password []byte) (crypto.PrivKey, []byte,
 	}
 	defer file.Close()
 
-	// Read salt, nonce, and ciphertext
 	salt := make([]byte, saltLen)
 	nonce := make([]byte, nonceLen)
 
@@ -130,7 +128,7 @@ func LoadAndDecryptKey(keyPath string, password []byte) (crypto.PrivKey, []byte,
 		return nil, nil, fmt.Errorf("failed to read nonce from key file: %w", err)
 	}
 
-	ciphertext, err := io.ReadAll(file) // Read the rest as ciphertext
+	ciphertext, err := io.ReadAll(file)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read ciphertext from key file: %w", err)
 	}
@@ -139,29 +137,23 @@ func LoadAndDecryptKey(keyPath string, password []byte) (crypto.PrivKey, []byte,
 		return nil, nil, fmt.Errorf("key file %s appears corrupted (empty ciphertext)", keyPath)
 	}
 
-	// Derive decryption key
 	derivedKey := argon2.IDKey(password, salt, argonTime, argonMemory, argonThreads, argonKeyLen)
 
-	// Create AES cipher block
 	block, err := aes.NewCipher(derivedKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create AES cipher for decryption: %w", err)
 	}
 
-	// Create GCM AEAD cipher
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create AES-GCM cipher for decryption: %w", err)
 	}
 
-	// Decrypt the ciphertext
 	plaintext, err := aesgcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
-		// Common cause: incorrect password or corrupted file
 		return nil, nil, fmt.Errorf("failed to decrypt key (incorrect password or corrupted file): %w", err)
 	}
 
-	// Unmarshal the decrypted bytes back into a private key
 	privKey, err := crypto.UnmarshalPrivateKey(plaintext)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal decrypted key bytes: %w", err)
