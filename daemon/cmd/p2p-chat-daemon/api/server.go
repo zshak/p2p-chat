@@ -18,8 +18,6 @@ import (
 	"strings"
 )
 
-// Embed the UI files at build time
-//
 //go:embed dist/*
 var uiFiles embed.FS
 
@@ -42,14 +40,9 @@ func StartAPIServer(
 	handler := newAPIHandler(appState, bus, chatService, profileService, connectionService, displayNameRepo)
 
 	mux := http.NewServeMux()
-
-	// Setup API routes
 	setupRoutes(mux, handler)
-
-	// Setup UI routes
 	setupUIRoutes(mux)
 
-	// Create HTTP server
 	server := &http.Server{
 		Addr:        listener.Addr().String(),
 		Handler:     corsMiddleware(mux),
@@ -73,11 +66,9 @@ func StartAPIServer(
 
 // setupUIRoutes configures the UI routes for serving the embedded React app
 func setupUIRoutes(mux *http.ServeMux) {
-	// Get the UI files subdirectory
 	uiFS, err := fs.Sub(uiFiles, "dist")
 	if err != nil {
 		log.Printf("Warning: Could not access embedded UI files: %v", err)
-		// Fallback handler for when UI is not embedded
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/" {
 				http.Error(w, "UI not available in this build", http.StatusNotFound)
@@ -88,10 +79,7 @@ func setupUIRoutes(mux *http.ServeMux) {
 		return
 	}
 
-	// Create file server for static assets
 	fileServer := http.FileServer(http.FS(uiFS))
-
-	// Handle all non-API routes
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			http.NotFound(w, r)
@@ -100,16 +88,12 @@ func setupUIRoutes(mux *http.ServeMux) {
 
 		path := strings.TrimPrefix(r.URL.Path, "/")
 
-		// For SPA routing, serve index.html for all routes that don't correspond to actual files
 		if path != "/" && !strings.Contains(path, ".") {
-			// Check if the file exists
 			if _, err := fs.Stat(uiFS, strings.TrimPrefix(path, "/")); err != nil {
-				// File doesn't exist, serve index.html for SPA routing
 				r.URL.Path = "/"
 			}
 		}
 
-		// Set proper MIME types for specific file extensions
 		if strings.HasSuffix(path, ".js") {
 			w.Header().Set("Content-Type", "application/javascript")
 		} else if strings.HasSuffix(path, ".css") {
@@ -124,10 +108,8 @@ func setupUIRoutes(mux *http.ServeMux) {
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Set CORS headers
 		origin := r.Header.Get("Origin")
 
-		// Check if the origin is allowed
 		if origin == "" ||
 			origin == "http://localhost:5173" ||
 			origin == "http://localhost:5174" ||

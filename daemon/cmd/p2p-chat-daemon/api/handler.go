@@ -18,7 +18,7 @@ type ApiHandler struct {
 	chatService       *chat.Service
 	profileService    *profile.Service
 	connectionService *connection.Service
-	displayNameRepo   storage.DisplayNameRepository // Add this line
+	displayNameRepo   storage.DisplayNameRepository
 	wsConn            *websocket.Conn
 	wsMu              sync.RWMutex
 }
@@ -30,7 +30,7 @@ func newAPIHandler(
 	chatService *chat.Service,
 	profileService *profile.Service,
 	connectionService *connection.Service,
-	displayNameRepo storage.DisplayNameRepository, // Add this parameter
+	displayNameRepo storage.DisplayNameRepository,
 ) *ApiHandler {
 	if appState == nil {
 		panic("appState cannot be nil for apiHandler")

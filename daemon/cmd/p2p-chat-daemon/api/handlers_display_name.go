@@ -11,7 +11,7 @@ import (
 // SetDisplayNameRequest represents the request to set a display name
 type SetDisplayNameRequest struct {
 	EntityID    string `json:"entity_id"`
-	EntityType  string `json:"entity_type"` // "friend" or "group"
+	EntityType  string `json:"entity_type"`
 	DisplayName string `json:"display_name"`
 }
 
@@ -26,7 +26,7 @@ type GetDisplayNameResponse struct {
 	EntityID     string `json:"entity_id"`
 	EntityType   string `json:"entity_type"`
 	DisplayName  string `json:"display_name"`
-	IsCustomName bool   `json:"is_custom_name"` // true if custom display name exists, false if using fallback
+	IsCustomName bool   `json:"is_custom_name"`
 }
 
 // DeleteDisplayNameRequest represents the request to delete a display name
@@ -42,11 +42,9 @@ func formatEntityIdFallback(entityID, entityType string) string {
 	}
 
 	if entityType == "group" {
-		// For groups, just return "Group" since we don't have member count here
 		return "Group Chat"
 	}
 
-	// For friends (peer IDs), format as truncated peer ID
 	if len(entityID) >= 8 {
 		first2 := entityID[:2]
 		last6 := entityID[len(entityID)-6:]
@@ -69,7 +67,6 @@ func (h *ApiHandler) handleSetDisplayName(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Validate input
 	if req.EntityID == "" || req.EntityType == "" || req.DisplayName == "" {
 		http.Error(w, "entity_id, entity_type, and display_name are required", http.StatusBadRequest)
 		return
@@ -80,14 +77,12 @@ func (h *ApiHandler) handleSetDisplayName(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Create display name object
 	displayName := DisplayName{
 		EntityID:    req.EntityID,
 		EntityType:  req.EntityType,
 		DisplayName: req.DisplayName,
 	}
 
-	// Store the display name
 	err := h.displayNameRepo.Store(r.Context(), displayName)
 	if err != nil {
 		log.Printf("API Handler: Error storing display name: %v", err)
@@ -113,13 +108,11 @@ func (h *ApiHandler) handleGetDisplayName(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Validate input
 	if req.EntityID == "" || req.EntityType == "" {
 		http.Error(w, "entity_id and entity_type are required", http.StatusBadRequest)
 		return
 	}
 
-	// Try to get the custom display name
 	displayName, err := h.displayNameRepo.GetByEntity(r.Context(), req.EntityID, req.EntityType)
 
 	var response GetDisplayNameResponse
@@ -128,23 +121,19 @@ func (h *ApiHandler) handleGetDisplayName(w http.ResponseWriter, r *http.Request
 
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
-			// No custom display name found - use fallback
 			response.DisplayName = formatEntityIdFallback(req.EntityID, req.EntityType)
 			response.IsCustomName = false
 			log.Printf("API Handler: No custom display name found for %s %s, using fallback: %s", req.EntityType, req.EntityID, response.DisplayName)
 		} else {
-			// Database error - still provide fallback
 			log.Printf("API Handler: Database error getting display name for %s %s: %v, using fallback", req.EntityType, req.EntityID, err)
 			response.DisplayName = formatEntityIdFallback(req.EntityID, req.EntityType)
 			response.IsCustomName = false
 		}
 	} else {
-		// Custom display name found
 		response.DisplayName = displayName.DisplayName
 		response.IsCustomName = true
 	}
 
-	// Marshal response
 	responseBytes, err := json.Marshal(response)
 	if err != nil {
 		log.Printf("API Handler: Error marshalling display name response: %v", err)
@@ -170,13 +159,11 @@ func (h *ApiHandler) handleDeleteDisplayName(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Validate input
 	if req.EntityID == "" || req.EntityType == "" {
 		http.Error(w, "entity_id and entity_type are required", http.StatusBadRequest)
 		return
 	}
 
-	// Delete the display name
 	err := h.displayNameRepo.Delete(r.Context(), req.EntityID, req.EntityType)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
