@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {useNavigate} from 'react-router-dom';
 import {
     AppBar,
     Avatar,
@@ -8,27 +8,26 @@ import {
     Container,
     Drawer,
     IconButton,
+    Paper,
+    TextField,
     Toolbar,
     Typography,
     useMediaQuery,
-    useTheme,
-    TextField,
-    Paper
+    useTheme
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import SendIcon from '@mui/icons-material/Send';
 import ChatMessage from './ChatMessage';
 import Sidebar from '../sidebar/Sidebar';
-import { DAEMON_STATES } from '../utils/constants';
-import { checkStatus, getFriends, getGroupChatMessages, getChatMessages, getDisplayNameAPI} from "../../services/api.js";
+import {DAEMON_STATES} from '../utils/constants';
+import {checkStatus, getChatMessages, getDisplayNameAPI, getFriends, getGroupChatMessages} from "../../services/api.js";
 import chatIcon from '../../../public/icon.svg';
 import websocketService from '../../services/websocket';
 
-// Mock getPeerId function - replace with your actual implementation
 const getPeerId = () => {
     const peerId = localStorage.getItem('userPeerId') || localStorage.getItem('peerID') || 'mock-peer-id';
-    return peerId.trim(); // Ensure no whitespace
+    return peerId.trim();
 };
 
 const MESSAGES_PER_PAGE = 10;
@@ -44,8 +43,6 @@ function ChatPage() {
     const messagesContainerRef = useRef(null);
     const loadMoreTriggerRef = useRef(null);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-    // Chat state
     const [message, setMessage] = useState('');
     const [messagesByChat, setMessagesByChat] = useState({});
     const [selectedChat, setSelectedChat] = useState(null);
@@ -53,32 +50,24 @@ function ChatPage() {
     const [friends, setFriends] = useState([]);
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
     const [isLoadingMoreMessages, setIsLoadingMoreMessages] = useState(false);
-
-    // Display name state
     const [selectedChatDisplayName, setSelectedChatDisplayName] = useState('');
-
-    // Pagination state for each chat
     const [chatPaginationState, setChatPaginationState] = useState({});
 
-    // Function to update display names when they change
     const handleDisplayNameUpdate = useCallback((entityId, entityType, newDisplayName) => {
-        // Update friends list if it's a friend
         if (entityType === 'friend') {
             setFriends(prev => prev.map(friend =>
                 friend.PeerID === entityId
-                    ? { ...friend, display_name: newDisplayName || undefined }
+                    ? {...friend, display_name: newDisplayName || undefined}
                     : friend
             ));
         }
 
-        // Update selected chat display name if it matches
         if (selectedChat) {
             const currentEntityId = selectedChat.type === 'friend' ? selectedChat.PeerID : selectedChat.group_id;
             if (currentEntityId === entityId && selectedChat.type === entityType) {
                 if (newDisplayName) {
                     setSelectedChatDisplayName(newDisplayName);
                 } else {
-                    // Reset to default name
                     if (selectedChat.type === 'friend') {
                         setSelectedChatDisplayName(selectedChat.PeerID);
                     } else {
@@ -89,17 +78,13 @@ function ChatPage() {
         }
     }, [selectedChat]);
 
-    // Load selected chat display name
     const loadSelectedChatDisplayName = useCallback(async (chat) => {
         if (!chat) {
             setSelectedChatDisplayName('');
             return;
         }
-
         const entityId = chat.type === 'friend' ? chat.PeerID : chat.group_id;
         const entityType = chat.type;
-
-        // First check if we have the display name in the chat object (for friends)
         if (chat.type === 'friend' && chat.display_name) {
             setSelectedChatDisplayName(chat.display_name);
             return;
@@ -113,7 +98,6 @@ function ChatPage() {
                 if (displayNameData && displayNameData.display_name) {
                     setSelectedChatDisplayName(displayNameData.display_name);
                 } else {
-                    // Use default name
                     if (chat.type === 'friend') {
                         setSelectedChatDisplayName(chat.PeerID);
                     } else {
@@ -122,7 +106,6 @@ function ChatPage() {
                 }
             }
         } catch (error) {
-            // Display name not found, use default
             if (chat.type === 'friend') {
                 setSelectedChatDisplayName(chat.PeerID);
             } else {
@@ -131,27 +114,21 @@ function ChatPage() {
         }
     }, []);
 
-    // Initialize component
     useEffect(() => {
         const initializeChat = async () => {
             try {
                 const response = await checkStatus();
                 setStatus(response.data.state);
-
                 if (response.data.state !== DAEMON_STATES.RUNNING) {
                     navigate('/login');
                     return;
                 }
-
                 const peerId = response.data.peer_id || getPeerId();
                 setOwnPeerId(peerId);
-
-                // Also store it in localStorage for consistency
                 if (response.data.peer_id) {
                     localStorage.setItem('userPeerId', response.data.peer_id);
                     localStorage.setItem('peerID', response.data.peer_id);
                 }
-
                 try {
                     const friendsResponse = await getFriends();
                     if (friendsResponse.data) {
@@ -161,7 +138,6 @@ function ChatPage() {
                     console.error('Failed to load friends:', error);
                     setFriends([]);
                 }
-
                 setLoading(false);
             } catch (err) {
                 console.error('Initialization failed:', err);
@@ -172,33 +148,27 @@ function ChatPage() {
         initializeChat();
     }, [navigate]);
 
-    // Auto-refresh status
     useEffect(() => {
         const interval = setInterval(async () => {
             try {
                 if (!document.hidden) {
                     const statusResponse = await checkStatus();
                     setStatus(statusResponse.data.state);
-
                     if (statusResponse.data.state !== DAEMON_STATES.RUNNING) {
                         navigate('/login');
                         return;
                     }
-
                     setRefreshTrigger(prev => prev + 1);
                 }
             } catch (err) {
                 console.error('Status check failed:', err);
             }
         }, 5000);
-
         return () => clearInterval(interval);
     }, [navigate]);
 
-    // Smooth scroll to bottom function
     const scrollToBottom = useCallback((behavior = 'smooth', force = false) => {
         if (messagesEndRef.current) {
-            // For initial load, use scrollTop to ensure we're at the bottom
             if (force && messagesContainerRef.current) {
                 messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
             } else {
@@ -211,22 +181,15 @@ function ChatPage() {
     }, []);
 
     useEffect(() => {
-        // Connect to WebSocket
         websocketService.connect();
-
-        // Add message listener
         const removeListener = websocketService.addMessageListener((data) => {
             console.log("WebSocket message received:", data);
-
-            // Check if ownPeerId is available before processing messages
             if (!ownPeerId) {
                 console.warn("Received WebSocket message before ownPeerId was set. Message:", data);
                 return;
             }
-
             if (data.type === 'DIRECT_MESSAGE' || data.type === 'GROUP_MESSAGE') {
-                const { sender_peer_id, message: chatMessageText, target_peer_id, group_id } = data.payload;
-
+                const {sender_peer_id, message: chatMessageText, target_peer_id, group_id} = data.payload;
                 console.log("Processing WebSocket message:", {
                     type: data.type,
                     sender: sender_peer_id,
@@ -234,17 +197,12 @@ function ChatPage() {
                     ownPeerId: ownPeerId,
                     isMyMessage: sender_peer_id === ownPeerId
                 });
-
                 let chatId;
                 if (data.type === 'DIRECT_MESSAGE') {
-                    // For DMs, the chat ID is the other participant's peer ID
-                    // If I sent the message, chat ID is the target
-                    // If I received the message, chat ID is the sender
                     chatId = sender_peer_id.trim() === ownPeerId.trim() ? target_peer_id : sender_peer_id;
-                } else { // GROUP_MESSAGE
+                } else {
                     chatId = group_id;
                 }
-
                 const newMessage = {
                     SenderPeerId: sender_peer_id,
                     Message: chatMessageText,
@@ -252,10 +210,7 @@ function ChatPage() {
                     isOutgoing: sender_peer_id.trim() === ownPeerId.trim(),
                     chatId: chatId,
                 };
-
                 console.log(`Adding new incoming/echoed message to chatId ${chatId}:`, newMessage);
-
-                // Update BOTH states - pagination state AND messagesByChat
                 setChatPaginationState(prev => {
                     const chatState = prev[chatId];
                     if (chatState) {
@@ -268,7 +223,6 @@ function ChatPage() {
                             }
                         };
                     } else {
-                        // If no chat state exists, create it
                         return {
                             ...prev,
                             [chatId]: {
@@ -280,8 +234,6 @@ function ChatPage() {
                         };
                     }
                 });
-
-                // IMPORTANT: Also update messagesByChat
                 setMessagesByChat(prev => {
                     const chatMessages = prev[chatId] || [];
                     return {
@@ -289,8 +241,6 @@ function ChatPage() {
                         [chatId]: [...chatMessages, newMessage]
                     };
                 });
-
-                // If the new message is for the currently selected chat AND the user is near the bottom, scroll down
                 if (selectedChat &&
                     ((selectedChat.type === 'friend' && selectedChat.PeerID === chatId) ||
                         (selectedChat.type === 'group' && selectedChat.group_id === chatId))) {
@@ -310,13 +260,10 @@ function ChatPage() {
         };
     }, [ownPeerId, selectedChat, scrollToBottom]);
 
-    // Load all messages for a chat and set up pagination
     const loadAllMessages = useCallback(async (chat) => {
         if (!chat || !ownPeerId) return [];
-
         try {
             let fetchedMsgs = [];
-
             if (chat.type === 'group') {
                 const response = await getGroupChatMessages(chat.group_id);
                 if (response.data && response.data.Messages) {
@@ -340,31 +287,23 @@ function ChatPage() {
                     }));
                 }
             }
-
-            // Sort messages by time (oldest first)
             return fetchedMsgs.sort((a, b) => new Date(a.Time).getTime() - new Date(b.Time).getTime());
-
         } catch (error) {
             console.error('Failed to load messages:', error);
             return [];
         }
     }, [ownPeerId]);
 
-    // Get the last N messages for initial display
     const getLastNMessages = useCallback((messages, n) => {
         return messages.slice(-n);
     }, []);
-
-    // Load more messages (previous messages)
     const loadMoreMessages = useCallback((chatId) => {
         setChatPaginationState(prev => {
             const chatState = prev[chatId];
             if (!chatState || !chatState.hasMore) return prev;
-
             const currentDisplayCount = chatState.displayedMessages.length;
             const totalMessages = chatState.allMessages.length;
             const messagesToLoad = Math.min(MESSAGES_PER_PAGE, totalMessages - currentDisplayCount);
-
             if (messagesToLoad <= 0) {
                 return {
                     ...prev,
@@ -374,11 +313,8 @@ function ChatPage() {
                     }
                 };
             }
-
-            // Get messages from the beginning that aren't displayed yet
             const startIndex = totalMessages - currentDisplayCount - messagesToLoad;
             const newMessages = chatState.allMessages.slice(startIndex, totalMessages - currentDisplayCount);
-
             return {
                 ...prev,
                 [chatId]: {
@@ -391,37 +327,23 @@ function ChatPage() {
         });
     }, []);
 
-    // Handle chat selection
     const handleSelectChat = useCallback(async (chat) => {
         console.log('Selected chat:', chat);
-
         if (selectedChat?.PeerID === chat.PeerID && selectedChat?.group_id === chat.group_id) {
             return;
         }
-
         setSelectedChat(chat);
         setMessage('');
-
         await loadSelectedChatDisplayName(chat);
         const chatId = chat.type === 'friend' ? chat.PeerID : chat.group_id;
-
-        // Check if we already have pagination state for this chat
         if (chatPaginationState[chatId]) {
-            // Just scroll to bottom without reloading
             setTimeout(() => scrollToBottom('auto', true), 50);
             return;
         }
-
         setIsLoadingMessages(true);
-
         try {
-            // Load all messages from backend
             const allMessages = await loadAllMessages(chat);
-
-            // Get the last 20 messages for initial display
             const initialMessages = getLastNMessages(allMessages, MESSAGES_PER_PAGE);
-
-            // Set up pagination state
             setChatPaginationState(prev => ({
                 ...prev,
                 [chatId]: {
@@ -431,22 +353,16 @@ function ChatPage() {
                     currentPage: 1
                 }
             }));
-
-            // Update the legacy messagesByChat for compatibility
             setMessagesByChat(prev => ({
                 ...prev,
                 [chatId]: initialMessages,
             }));
-
-            // Scroll to bottom after messages are loaded
             setTimeout(() => scrollToBottom('auto', true), 100);
-            // Additional fallback scroll
             setTimeout(() => {
                 if (messagesContainerRef.current) {
                     messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
                 }
             }, 200);
-
         } catch (error) {
             console.error('Failed to load messages:', error);
             setChatPaginationState(prev => ({
@@ -464,19 +380,15 @@ function ChatPage() {
         }
     }, [selectedChat, chatPaginationState, loadAllMessages, getLastNMessages, scrollToBottom, loadSelectedChatDisplayName]);
 
-    // Update messagesByChat when pagination state changes and ensure scroll to bottom
     useEffect(() => {
         if (selectedChat) {
             const chatId = selectedChat.type === 'friend' ? selectedChat.PeerID : selectedChat.group_id;
             const chatState = chatPaginationState[chatId];
-
             if (chatState) {
                 setMessagesByChat(prev => ({
                     ...prev,
                     [chatId]: chatState.displayedMessages
                 }));
-
-                // If this is the initial load (first page), scroll to bottom
                 if (chatState.currentPage === 1 && chatState.displayedMessages.length > 0) {
                     setTimeout(() => {
                         if (messagesContainerRef.current) {
@@ -488,7 +400,6 @@ function ChatPage() {
         }
     }, [chatPaginationState, selectedChat]);
 
-    // Intersection Observer for loading more messages
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
@@ -496,26 +407,20 @@ function ChatPage() {
                 if (entry.isIntersecting && selectedChat && !isLoadingMoreMessages) {
                     const chatId = selectedChat.type === 'friend' ? selectedChat.PeerID : selectedChat.group_id;
                     const chatState = chatPaginationState[chatId];
-
                     if (chatState && chatState.hasMore) {
                         setIsLoadingMoreMessages(true);
-
-                        // Store current scroll position relative to the container
                         const container = messagesContainerRef.current;
                         const previousScrollHeight = container.scrollHeight;
                         const previousScrollTop = container.scrollTop;
-
                         setTimeout(() => {
                             loadMoreMessages(chatId);
-
-                            // Restore scroll position after loading more messages
                             setTimeout(() => {
                                 const newScrollHeight = container.scrollHeight;
                                 const heightDifference = newScrollHeight - previousScrollHeight;
                                 container.scrollTop = previousScrollTop + heightDifference;
                                 setIsLoadingMoreMessages(false);
                             }, 50);
-                        }, 500); // Small delay to show loading state
+                        }, 500);
                     }
                 }
             },
@@ -536,23 +441,19 @@ function ChatPage() {
         };
     }, [selectedChat, chatPaginationState, isLoadingMoreMessages, loadMoreMessages]);
 
-    // Auto-scroll when new messages arrive (only if user is at bottom)
     useEffect(() => {
         if (selectedChat) {
             const chatId = selectedChat.type === 'friend' ? selectedChat.PeerID : selectedChat.group_id;
             const messages = messagesByChat[chatId];
             const chatState = chatPaginationState[chatId];
-
             if (messages && messages.length > 0) {
                 const container = messagesContainerRef.current;
                 if (container) {
-                    // For initial load, always scroll to bottom
                     if (chatState && chatState.currentPage === 1) {
                         setTimeout(() => {
                             container.scrollTop = container.scrollHeight;
                         }, 100);
                     } else {
-                        // For subsequent messages, only scroll if user is near bottom
                         const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
                         if (isNearBottom) {
                             setTimeout(() => scrollToBottom('smooth'), 50);
@@ -563,24 +464,17 @@ function ChatPage() {
         }
     }, [messagesByChat, selectedChat, chatPaginationState, scrollToBottom]);
 
-    // FIXED: Remove immediate message addition, rely only on WebSocket echo
     const handleSendMessage = (e) => {
         e.preventDefault();
         if (!message.trim() || !selectedChat) return;
 
         const messageToSend = message;
-        setMessage(''); // Clear input immediately for better UX
-
-        // Send through WebSocket - don't add to state immediately
-        // The message will be added when we receive the WebSocket echo
+        setMessage('');
         if (selectedChat.type === 'friend') {
             websocketService.sendMessage(selectedChat.PeerID, messageToSend);
         } else if (selectedChat.type === 'group') {
             websocketService.sendGroupMessage(selectedChat.group_id, messageToSend);
         }
-
-        // Don't add to state here - wait for WebSocket acknowledgment
-        // The message will appear when we receive it back through the WebSocket listener
     };
 
     const toggleDrawer = () => {
@@ -588,8 +482,6 @@ function ChatPage() {
     };
 
     const drawerWidth = 240;
-
-    // Get messages for selected chat
     const currentChatId = selectedChat?.type === 'friend' ? selectedChat.PeerID : selectedChat?.group_id;
     const messagesToDisplay = messagesByChat[currentChatId] || [];
     const currentChatState = chatPaginationState[currentChatId];
@@ -609,7 +501,6 @@ function ChatPage() {
 
     return (
         <Box sx={{display: 'flex', height: '100vh'}}>
-            {/* Mobile Drawer */}
             {isMobile && (
                 <Drawer
                     variant="temporary"
@@ -640,7 +531,6 @@ function ChatPage() {
                 </Drawer>
             )}
 
-            {/* Desktop Drawer */}
             {!isMobile && (
                 <Drawer
                     variant="permanent"
@@ -666,9 +556,7 @@ function ChatPage() {
                 </Drawer>
             )}
 
-            {/* Main Chat Area */}
             <Box sx={{flexGrow: 1, display: 'flex', flexDirection: 'column', height: '100%'}}>
-                {/* Header */}
                 <AppBar position="static" color="primary" elevation={0}>
                     <Toolbar>
                         {isMobile && (
@@ -708,10 +596,8 @@ function ChatPage() {
                     </Toolbar>
                 </AppBar>
 
-                {/* Chat Content */}
                 {selectedChat ? (
                     <>
-                        {/* Messages Area */}
                         <Box
                             ref={messagesContainerRef}
                             sx={{
@@ -725,7 +611,6 @@ function ChatPage() {
                                 position: 'relative'
                             }}
                         >
-                            {/* Load More Trigger */}
                             {currentChatState?.hasMore && (
                                 <Box
                                     ref={loadMoreTriggerRef}
@@ -780,12 +665,10 @@ function ChatPage() {
                                             currentUser={{peerId: ownPeerId}}
                                         />
                                     ))}
-                                    {/* Force scroll to bottom on initial render */}
                                     {currentChatState?.currentPage === 1 && (
                                         <div
                                             ref={(el) => {
                                                 if (el && messagesContainerRef.current) {
-                                                    // Force scroll to bottom immediately
                                                     setTimeout(() => {
                                                         messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
                                                     }, 0);
@@ -797,8 +680,6 @@ function ChatPage() {
                             )}
                             <div ref={messagesEndRef}/>
                         </Box>
-
-                        {/* Message Input */}
                         <Paper
                             component="form"
                             onSubmit={handleSendMessage}
