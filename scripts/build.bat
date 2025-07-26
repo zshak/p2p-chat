@@ -1,17 +1,14 @@
 @echo off
-REM minimal-build.bat - Just build and package for all platforms
 
 setlocal EnableDelayedExpansion
 
 echo Building P2P Chat for all platforms...
 echo.
 
-REM Paths
 set DAEMON_DIR=..\daemon\cmd\p2p-chat-daemon
 set UI_DIR=..\ui
 set BUILD_DIR=..\execute
 
-REM Clean
 if exist "%BUILD_DIR%" rmdir /s /q "%BUILD_DIR%"
 if exist "ui-temp" rmdir /s /q "ui-temp"
 mkdir "%BUILD_DIR%"
@@ -27,7 +24,6 @@ if errorlevel 1 (
 )
 popd
 
-REM Find UI output directory
 set UI_OUTPUT=
 if exist "%UI_DIR%\dist" set UI_OUTPUT=%UI_DIR%\dist
 if exist "%UI_DIR%\build" set UI_OUTPUT=%UI_DIR%\build
@@ -42,12 +38,10 @@ if "%UI_OUTPUT%"=="" (
 
 echo Found UI output: %UI_OUTPUT%
 
-REM Copy UI
 xcopy /e /i /y "%UI_OUTPUT%" "%DAEMON_DIR%/api/dist" >nul
 
 echo [2/3] Embedding UI...
 
-REM Create embed.go
 (
 echo //go:build !dev
 echo.
@@ -68,7 +62,6 @@ echo     return http.FileServer^(http.FS^(uiFS^)^)
 echo ^}
 ) > "%DAEMON_DIR%\embed.go"
 
-REM Copy UI to daemon
 mkdir "%DAEMON_DIR%\ui\dist" >nul 2>&1
 xcopy /e /i /y "ui-temp" "%DAEMON_DIR%\ui\dist\" >nul
 
@@ -78,25 +71,21 @@ pushd "%DAEMON_DIR%"
 
 set CGO_ENABLED=0
 
-REM Windows
 echo Building Windows...
 set GOOS=windows
 set GOARCH=amd64
 go build -ldflags="-w -s" -o "..\..\%BUILD_DIR%\p2p-chat-daemon.exe"
 
-REM Linux
 echo Building Linux...
 set GOOS=linux
 set GOARCH=amd64
 go build -ldflags="-w -s" -o "..\..\%BUILD_DIR%\p2p-chat-daemon-linux"
 
-REM macOS Intel
 echo Building macOS Intel...
 set GOOS=darwin
 set GOARCH=amd64
 go build -ldflags="-w -s" -o "..\..\%BUILD_DIR%\p2p-chat-daemon-darwin"
 
-REM macOS Apple Silicon
 echo Building macOS ARM...
 set GOOS=darwin
 set GOARCH=arm64
@@ -104,7 +93,6 @@ go build -ldflags="-w -s" -o "..\..\%BUILD_DIR%\p2p-chat-daemon-darwin-arm64"
 
 popd
 
-REM Create simple README
 (
 echo # P2P Chat Binaries
 echo.
@@ -116,7 +104,6 @@ echo.
 echo Web UI available at: http://localhost:3000
 ) > "%BUILD_DIR%\README.md"
 
-REM Cleanup
 if exist "ui-temp" rmdir /s /q "ui-temp"
 if exist "%DAEMON_DIR%\embed.go" del "%DAEMON_DIR%\embed.go"
 if exist "%DAEMON_DIR%\ui-temp" rmdir /s /q "%DAEMON_DIR%\ui-temp"
