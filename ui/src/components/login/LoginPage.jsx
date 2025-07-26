@@ -1,17 +1,11 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-    Container,
-    Box,
-    Typography,
-    useTheme,
-    useMediaQuery
-} from '@mui/material';
-import { checkStatus, registerUser, unlockWithPassword } from "../../services/api.js";
+import {useEffect, useState} from 'react';
+import {useNavigate} from 'react-router-dom';
+import {Box, Container, Typography, useMediaQuery, useTheme} from '@mui/material';
+import {checkStatus, registerUser, unlockWithPassword} from "../../services/api.js";
 import LoadingScreen from './LoadingScreen';
 import LoginForm from './LoginForm';
 import RegisterForm from '../register/RegisterForm';
-import { LOGIN_STEPS, LOGIN_STEP_MESSAGES, DAEMON_STATES } from '../utils/constants';
+import {DAEMON_STATES, LOGIN_STEP_MESSAGES, LOGIN_STEPS} from '../utils/constants';
 import {setPeerId} from '../utils/userStore.js'
 
 function LoginPage() {
@@ -35,13 +29,11 @@ function LoginPage() {
             setLoading(true);
             const response = await checkStatus();
             setDaemonState(response.data.state);
-
             if (response.data.state === DAEMON_STATES.RUNNING) {
                 setPeerId(response.data.peer_id)
                 console.log('set peer id: ' + response.data.peer_id);
                 navigate('/chat');
             }
-
             setLoading(false);
         } catch (err) {
             setError('Failed to connect to the server. Please make sure the backend is running.');
@@ -55,36 +47,27 @@ function LoginPage() {
             LOGIN_STEPS.SETUP_CONNECTION,
             LOGIN_STEPS.VERIFYING_NETWORK
         ];
-
         let currentStepIndex = 0;
         setLoginStep(steps[currentStepIndex]);
-
         const pollInterval = setInterval(async () => {
             try {
                 const response = await checkStatus();
-                const { state, peer_id } = response.data;
-
-                // Check if we received peer_id for the first time
+                const {state, peer_id} = response.data;
                 if (peer_id && !peerIdReceived) {
                     setPeerIdReceived(true);
-                    // Move to next random step when peer_id is received
                     currentStepIndex = Math.min(currentStepIndex + 1, steps.length - 1);
                     setLoginStep(steps[currentStepIndex]);
                 }
-
-                // Check if state is "Running"
                 if (state === DAEMON_STATES.RUNNING) {
                     setPeerId(response.data.peer_id)
                     clearInterval(pollInterval);
                     setLoginStep(LOGIN_STEPS.SUCCESS);
-
                     setTimeout(() => {
                         navigate('/chat');
                     }, 1000);
                     return;
                 }
 
-                // Randomly advance to next step occasionally (to show progress)
                 if (Math.random() < 0.3 && currentStepIndex < steps.length - 1) {
                     currentStepIndex++;
                     setLoginStep(steps[currentStepIndex]);
@@ -92,11 +75,9 @@ function LoginPage() {
 
             } catch (error) {
                 console.error('Error polling status:', error);
-                // Continue polling even on error
             }
-        }, 1500); // Poll every 1.5 seconds
+        }, 1500);
 
-        // Cleanup interval after 30 seconds max to prevent infinite polling
         setTimeout(() => {
             clearInterval(pollInterval);
             if (loading) {
@@ -113,15 +94,11 @@ function LoginPage() {
             setError('Password cannot be empty');
             return;
         }
-
         try {
             setError(null);
             setLoading(true);
             setPeerIdReceived(false);
-
             await unlockWithPassword(password);
-
-            // Start polling with random UI steps
             pollStatusWithRandomSteps();
 
         } catch (unlockErr) {
@@ -137,10 +114,7 @@ function LoginPage() {
             setError(null);
             setLoading(true);
             setPeerIdReceived(false);
-
             await registerUser(password);
-
-            // Start polling with random UI steps
             pollStatusWithRandomSteps();
 
         } catch (err) {
@@ -193,7 +167,7 @@ function LoginPage() {
                 )}
 
                 {daemonState === DAEMON_STATES.WAITING_FOR_KEY && (
-                    <Box sx={{ width: '100%' }}>
+                    <Box sx={{width: '100%'}}>
                         <RegisterForm
                             handleRegister={handleRegister}
                             error={error}
@@ -202,7 +176,7 @@ function LoginPage() {
                     </Box>
                 )}
 
-                <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 3 }}>
+                <Typography variant="body2" color="text.secondary" align="center" sx={{mt: 3}}>
                     © {new Date().getFullYear()} P2P Chat - Bachelor's Project
                 </Typography>
             </Box>

@@ -14,7 +14,6 @@ func (h *ApiHandler) handleCreateGroupChat(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Decode request body
 	var req CreateGroupChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
@@ -28,7 +27,6 @@ func (h *ApiHandler) handleCreateGroupChat(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// --- Send Success Response ---
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Group chat created successfully")
 }
@@ -40,7 +38,6 @@ func (h *ApiHandler) handleSendGroupMessage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Decode request body
 	var req SendGroupChatMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
@@ -54,7 +51,6 @@ func (h *ApiHandler) handleSendGroupMessage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// --- Send Success Response ---
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Group chat message sent successfully")
 }
@@ -65,7 +61,6 @@ func (h *ApiHandler) handleGetGroupMessages(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Decode request body
 	var req GetGroupChatMessagesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
@@ -86,7 +81,6 @@ func (h *ApiHandler) handleGetGroupMessages(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "Failed to prepare group chat messages response", http.StatusInternalServerError)
 	}
 
-	// --- Send Success Response -
 	w.Write(responseBytes)
 }
 

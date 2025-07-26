@@ -5,7 +5,6 @@ import (
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	// Import necessary libp2p types ONLY here
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 )
@@ -58,13 +57,12 @@ func (s DaemonState) String() string {
 }
 
 // AppState holds the shared state accessible by different parts of the daemon.
-// Access should be protected by the Mutex.
 type AppState struct {
 	Mu           sync.Mutex
 	State        DaemonState
 	Node         *host.Host
 	Dht          *dht.IpfsDHT
-	PubSub       *pubsub.PubSub // Added PubSub field
+	PubSub       *pubsub.PubSub
 	KeyPath      string
 	PrivKey      crypto.PrivKey
 	DbKey        []byte

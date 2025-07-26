@@ -1,18 +1,9 @@
 import React from 'react';
-import {
-    Box,
-    Paper,
-    CircularProgress,
-    Typography,
-    Avatar,
-    Container,
-    useTheme
-} from '@mui/material';
-// import ChatIcon from '@mui/icons-material/Chat';
+import {Box, CircularProgress, Container, Paper, Typography, useTheme} from '@mui/material';
 import chatIcon from '../../../public/icon.svg';
 
 
-const LoadingScreen = ({ loginStep, message, subMessage }) => {
+const LoadingScreen = ({loginStep, message, subMessage}) => {
     const theme = useTheme();
 
     return (
@@ -100,7 +91,7 @@ const LoadingScreen = ({ loginStep, message, subMessage }) => {
                     ))}
                 </Box>
 
-                <CircularProgress color="primary" size={48} thickness={4} sx={{ mb: 2 }} />
+                <CircularProgress color="primary" size={48} thickness={4} sx={{mb: 2}}/>
 
                 <Typography variant="h6" color="primary" align="center" gutterBottom>
                     {message}

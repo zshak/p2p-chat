@@ -57,9 +57,7 @@ func (c *Consumer) handleEvent(event interface{}) {
 	case events.UserAuthenticatedEvent, events.KeyGeneratedEvent:
 		log.Printf("User Authenticated, Unlocking Startup")
 		select {
-		// close (idempotent)
 		case <-c.keyReadyChan:
-			// channel closed
 		default:
 			// else close
 			close(c.keyReadyChan)

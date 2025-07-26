@@ -92,13 +92,11 @@ func (c *Consumer) handleEvent(event interface{}) {
 }
 
 func (c *Consumer) handleFriendRequestReceived(request types.FriendRequestData) {
-	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second) // Short timeout for DB operation
+	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
 	defer cancel()
 
-	// Parse the timestamp (excluding the "m=+46.107792917" part)
 	layout := "2006-01-02 15:04:05.999999 -0700 MST"
 
-	// Remove the monotonic clock portion (m=+46.107792917)
 	cleanTimestamp := request.Timestamp
 	if idx := strings.Index(request.Timestamp, " m=+"); idx > 0 {
 		cleanTimestamp = request.Timestamp[:idx]
@@ -118,7 +116,6 @@ func (c *Consumer) handleFriendRequestReceived(request types.FriendRequestData) 
 
 	curRel, err := c.relationshipRepo.GetRelationByPeerId(storeCtx, request.SenderPeerID)
 
-	// already exists
 	if curRel.PeerID != "" {
 		log.Printf("Profile Consumer: Received duplicate friends request from %s", request.SenderPeerID)
 		return
@@ -133,13 +130,10 @@ func (c *Consumer) handleFriendRequestReceived(request types.FriendRequestData) 
 }
 
 func (c *Consumer) handleFriendRequestSent(event events.FriendRequestSentEvent) {
-	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second) // Short timeout for DB operation
+	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
 	defer cancel()
 
-	// Parse the timestamp (excluding the "m=+46.107792917" part)
 	layout := "2006-01-02 15:04:05.999999 -0700 MST"
-
-	// Remove the monotonic clock portion (m=+46.107792917)
 	cleanTimestamp := event.Timestamp.String()
 	if idx := strings.Index(event.Timestamp.String(), " m=+"); idx > 0 {
 		cleanTimestamp = event.Timestamp.String()[:idx]
@@ -178,15 +172,13 @@ func (c *Consumer) handleFriendResponseSentEvent(event events.FriendResponseSent
 }
 
 func (c *Consumer) handleFriendResponseReceivedEvent(event events.FriendResponseReceivedEvent) {
-	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second) // Short timeout for DB operation
+	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
 	defer cancel()
 
 	status := event.Status
 
-	// Parse the timestamp (excluding the "m=+46.107792917" part)
 	layout := "2006-01-02 15:04:05.999999 -0700 MST"
 
-	// Remove the monotonic clock portion (m=+46.107792917)
 	cleanTimestamp := event.Timestamp
 	if idx := strings.Index(event.Timestamp, " m=+"); idx > 0 {
 		cleanTimestamp = event.Timestamp[:idx]

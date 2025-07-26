@@ -1,19 +1,19 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
-    Button,
     Alert,
     Box,
+    Button,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    TextField,
     Typography
 } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import {sendFriendRequest} from "../../services/api.js";
 
-const AddFriend = ({ open, onClose, onFriendRequestSent }) => {
+const AddFriend = ({open, onClose, onFriendRequestSent}) => {
     const [peerId, setPeerId] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -59,18 +59,18 @@ const AddFriend = ({ open, onClose, onFriendRequestSent }) => {
     return (
         <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
             <DialogTitle>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <PersonAddIcon color="primary" />
+                <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
+                    <PersonAddIcon color="primary"/>
                     Add Friend
                 </Box>
             </DialogTitle>
             <DialogContent>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{mb: 2}}>
                     Enter the Peer ID of the person you want to add as a friend.
                 </Typography>
 
-                {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-                {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+                {error && <Alert severity="error" sx={{mb: 2}}>{error}</Alert>}
+                {success && <Alert severity="success" sx={{mb: 2}}>{success}</Alert>}
 
                 <TextField
                     autoFocus

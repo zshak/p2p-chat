@@ -34,9 +34,6 @@ export const createGroupChat = (member_peers, name) => api.post('/group-chat', {
 
 export const getChatMessages = (peer_id) => api.post('/chat/messages', {peer_id});
 
-// Enhanced display name functions with improved error handling
-
-// Set or update a display name for a friend or group
 export const setDisplayNameAPI = async (entityId, entityType, displayName) => {
     try {
         const response = await fetch(`${API_BASE_URL}/profile/display-name`, {
@@ -63,7 +60,6 @@ export const setDisplayNameAPI = async (entityId, entityType, displayName) => {
     }
 };
 
-// Get a display name for a friend or group - ALWAYS returns a name (never null)
 export const getDisplayNameAPI = async (entityId, entityType) => {
     try {
         const response = await fetch(`${API_BASE_URL}/profile/display-name/get`, {
@@ -78,7 +74,6 @@ export const getDisplayNameAPI = async (entityId, entityType) => {
         });
 
         if (!response.ok) {
-            // Even if there's an error, provide a fallback
             console.warn(`Failed to get display name for ${entityType} ${entityId}, using fallback`);
             return {
                 entity_id: entityId,
@@ -91,7 +86,6 @@ export const getDisplayNameAPI = async (entityId, entityType) => {
         const data = await response.json();
         return data;
     } catch (error) {
-        // Network error or parsing error - provide fallback
         console.warn(`Error getting display name for ${entityType} ${entityId}:`, error);
         return {
             entity_id: entityId,
@@ -102,7 +96,6 @@ export const getDisplayNameAPI = async (entityId, entityType) => {
     }
 };
 
-// Delete a display name for a friend or group
 export const deleteDisplayNameAPI = async (entityId, entityType) => {
     try {
         const response = await fetch(`${API_BASE_URL}/profile/display-name/delete`, {
@@ -115,10 +108,8 @@ export const deleteDisplayNameAPI = async (entityId, entityType) => {
                 entity_type: entityType
             }),
         });
-
         if (!response.ok) {
             const errorText = await response.text();
-            // Don't throw error for "not found" cases
             if (response.status === 404) {
                 console.log(`No display name to delete for ${entityType} ${entityId}`);
                 return response;
@@ -133,15 +124,11 @@ export const deleteDisplayNameAPI = async (entityId, entityType) => {
     }
 };
 
-// Helper function to format entity IDs as fallback display names
 const formatEntityIdFallback = (entityId, entityType) => {
     if (!entityId) return 'Unknown';
-
     if (entityType === 'group') {
         return 'Group Chat';
     }
-
-    // For friends (peer IDs), format as truncated peer ID
     if (entityId.length >= 8) {
         const first2 = entityId.substring(0, 2);
         const last6 = entityId.substring(entityId.length - 6);

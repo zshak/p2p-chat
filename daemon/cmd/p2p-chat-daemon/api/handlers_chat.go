@@ -14,7 +14,6 @@ func (h *ApiHandler) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Decode request body
 	var req MessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
@@ -36,7 +35,6 @@ func (h *ApiHandler) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// --- Send Success Response ---
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Message sent successfully")
 }
@@ -48,7 +46,6 @@ func (h *ApiHandler) handleGetMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Decode request body
 	var req GetChatMessagesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
@@ -68,6 +65,5 @@ func (h *ApiHandler) handleGetMessages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to prepare chat messages response", http.StatusInternalServerError)
 	}
 
-	// --- Send Success Response ---
 	w.Write(responseBytes)
 }

@@ -20,7 +20,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import GroupIcon from '@mui/icons-material/Group';
 import AddBoxIcon from '@mui/icons-material/AddBox';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import {checkStatus, getFriendRequests, getFriends, getGroupChats, getDisplayNameAPI} from '../../services/api';
+import {checkStatus, getFriendRequests, getFriends, getGroupChats} from '../../services/api';
 import AddFriend from '../friends/AddFriend';
 import FriendRequests from '../friends/FriendRequests';
 import CreateGroupChat from '../groupchat/CreateGroupChat.jsx';
@@ -47,7 +47,6 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat, onDisplayNameUpdate}) => {
     };
 
     const getDisplayName = (chat) => {
-        // For friends: check display_name from API response first, then fallback to formatted peer ID
         if (chat.PeerID) {
             return chat.display_name || formatPeerId(chat.PeerID);
         } else if (chat.group_id) {
@@ -69,36 +68,25 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat, onDisplayNameUpdate}) => {
                 getGroupChats(),
                 checkStatus()
             ]);
-
-            // Handle friends response
             const validFriends = friendsResponse.status === 'fulfilled'
                 ? (friendsResponse.value.data || []).filter(friend => friend && friend.PeerID)
                 : [];
-
-            // Handle friend requests response
             const validRequests = requestsResponse.status === 'fulfilled'
                 ? (requestsResponse.value.data || [])
                 : [];
-
-            // Handle groups response
             const validGroups = groupChatsResponse.status === 'fulfilled'
                 ? (groupChatsResponse.value.data || [])
                 : [];
-
-            // Handle status response
             const userStatus = statusResponse.status === 'fulfilled'
                 ? {
                     peer_id: statusResponse.value.data?.peer_id || null,
                     state: statusResponse.value.data?.state || null
                 }
-                : { peer_id: null, state: null };
-
+                : {peer_id: null, state: null};
             setFriends(validFriends);
             setFriendRequests(validRequests);
             setGroupChats(validGroups);
             setCurrentUser(userStatus);
-
-            // Log any failures
             if (friendsResponse.status === 'rejected') {
                 console.warn('Failed to load friends:', friendsResponse.reason);
             }
@@ -114,11 +102,10 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat, onDisplayNameUpdate}) => {
 
         } catch (error) {
             console.error('Unexpected error in loadChatData:', error);
-            // Set safe defaults
             setFriends([]);
             setFriendRequests([]);
             setGroupChats([]);
-            setCurrentUser({ peer_id: null, state: null });
+            setCurrentUser({peer_id: null, state: null});
         } finally {
             setLoading(false);
         }
@@ -145,22 +132,19 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat, onDisplayNameUpdate}) => {
     }, [loadChatData]);
 
     const handleDisplayNameUpdate = (entityId, entityType, newDisplayName) => {
-        // Update the local state immediately for better UX
         if (entityType === 'friend') {
             setFriends(prev => prev.map(friend =>
                 friend.PeerID === entityId
-                    ? { ...friend, display_name: newDisplayName || null }
+                    ? {...friend, display_name: newDisplayName || null}
                     : friend
             ));
         } else if (entityType === 'group') {
             setGroupChats(prev => prev.map(group =>
                 group.group_id === entityId
-                    ? { ...group, name: newDisplayName || group.name || 'Group Chat' }
+                    ? {...group, name: newDisplayName || group.name || 'Group Chat'}
                     : group
             ));
         }
-
-        // Call parent callback if provided
         if (onDisplayNameUpdate) {
             onDisplayNameUpdate(entityId, entityType, newDisplayName);
         }
@@ -194,7 +178,6 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat, onDisplayNameUpdate}) => {
             await navigator.clipboard.writeText(currentUser.peer_id);
             setCopySuccess(true);
         } catch (err) {
-            // Fallback for older browsers
             const textArea = document.createElement('textarea');
             textArea.value = currentUser.peer_id;
             document.body.appendChild(textArea);
@@ -297,15 +280,12 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat, onDisplayNameUpdate}) => {
                                     color: 'text.secondary'
                                 }}
                             />
-
-                            {/* Only show EditDisplayName component for friends, not for groups */}
                             {type === 'friend' && (
                                 <EditDisplayName
                                     entity={item}
                                     entityType={type}
                                     currentDisplayName={
                                         (() => {
-                                            // Only pass custom display name if it differs from the default
                                             const defaultName = formatPeerId(item.PeerID);
                                             const currentName = item.display_name;
                                             return (currentName && currentName !== defaultName) ? currentName : '';
@@ -329,7 +309,6 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat, onDisplayNameUpdate}) => {
 
     return (
         <>
-            {/* User Profile Section */}
             <Box
                 sx={{
                     display: 'flex',
@@ -349,8 +328,6 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat, onDisplayNameUpdate}) => {
                 >
                     <PersonIcon fontSize="large"/>
                 </Avatar>
-
-                {/* Peer ID Display with Copy Button */}
                 <Box sx={{
                     display: 'flex',
                     alignItems: 'center',
@@ -398,10 +375,7 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat, onDisplayNameUpdate}) => {
                     Online
                 </Typography>
             </Box>
-
             <Divider/>
-
-            {/* Action Buttons */}
             <Box sx={{p: 2, display: 'flex', gap: 1, bgcolor: 'background.paper'}}>
                 <Tooltip title="Add Friend" arrow>
                     <IconButton
@@ -463,10 +437,7 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat, onDisplayNameUpdate}) => {
                     </IconButton>
                 </Tooltip>
             </Box>
-
             <Divider/>
-
-            {/* Chat Lists */}
             <Box
                 sx={{
                     flexGrow: 1,
@@ -489,8 +460,6 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat, onDisplayNameUpdate}) => {
                     'No friends yet. Add some friends to start chatting!'
                 )}
             </Box>
-
-            {/* Copy Success Snackbar */}
             <Snackbar
                 open={copySuccess}
                 autoHideDuration={3000}
@@ -506,21 +475,17 @@ const Sidebar = ({refreshTrigger = 0, onSelectChat, onDisplayNameUpdate}) => {
                     Peer ID copied to clipboard!
                 </Alert>
             </Snackbar>
-
-            {/* Modals */}
             <AddFriend
                 open={addFriendOpen}
                 onClose={() => setAddFriendOpen(false)}
                 onFriendRequestSent={handleFriendRequestSent}
             />
-
             <FriendRequests
                 open={friendRequestsOpen}
                 onClose={() => setFriendRequestsOpen(false)}
                 friendRequests={friendRequests}
                 onRequestHandled={handleRequestHandled}
             />
-
             <CreateGroupChat
                 open={createGroupChatOpen}
                 onClose={() => setCreateGroupChatOpen(false)}

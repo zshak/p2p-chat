@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	friendStatusCheckInterval = 15 * time.Second // How often to ping friends
-	pingTimeout               = 15 * time.Second // Timeout for a single ping
+	friendStatusCheckInterval = 15 * time.Second
+	pingTimeout               = 15 * time.Second
 )
 
 // Service periodically checks the online status of friends.
@@ -130,7 +130,6 @@ func (s *Service) checkAllFriends() {
 				return
 			}
 
-			// Do not ping self
 			if friendPID == (*s.appState.Node).ID() {
 				log.Printf("Yo i am pingin myself wth")
 				return
@@ -181,6 +180,6 @@ func (s *Service) updateAndNotifyStatus(peerID peer.ID, isOnline bool, rtt time.
 			RTT:      rtt,
 		})
 	} else {
-		s.statusMutex.Unlock() // No change
+		s.statusMutex.Unlock()
 	}
 }

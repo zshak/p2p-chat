@@ -29,7 +29,6 @@ type Service struct {
 	bus               *bus.EventBus
 }
 
-// NewProtocolHandler creates a new chat protocol handler
 func NewProtocolHandler(
 	app *core.AppState,
 	bus *bus.EventBus,
@@ -222,7 +221,6 @@ func (s *Service) SendFriendRequestAsync(receiverPeerId string, targetPID peer.I
 			return nil
 		}
 
-		// Use a separate context and timeout for the connection attempt
 		connectCtx, connectCancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer connectCancel()
 
@@ -259,7 +257,7 @@ func (s *Service) SendFriendRequestAsync(receiverPeerId string, targetPID peer.I
 
 	if err != nil {
 		log.Printf("Error writing/closing friends request stream to %s: %v", receiverPeerId, err)
-		stream.Reset() // Reset on error
+		stream.Reset()
 		return nil
 	}
 
@@ -305,7 +303,6 @@ func (s *Service) SendFriendResponse(receiverPeerId string, isApproved bool) err
 			return errors.New(fmt.Sprintf("Cannot connect to peer %s: No known addresses", targetPID.ShortString()))
 		}
 
-		// Use a separate context and timeout for the connection attempt
 		connectCtx, connectCancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer connectCancel()
 
@@ -342,7 +339,7 @@ func (s *Service) SendFriendResponse(receiverPeerId string, isApproved bool) err
 
 	if err != nil {
 		log.Printf("Error writing/closing friends response stream to %s: %v", receiverPeerId, err)
-		stream.Reset() // Reset on error
+		stream.Reset()
 		return fmt.Errorf("failed to send/close friends response: %w", err)
 	}
 
@@ -351,7 +348,7 @@ func (s *Service) SendFriendResponse(receiverPeerId string, isApproved bool) err
 }
 
 func (s *Service) RespondToFriendRequest(receiverPeerId string, isAccepted bool) error {
-	storeCtx, cancel := context.WithTimeout(s.ctx, 5*time.Second) // Short timeout for DB operation
+	storeCtx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 
 	var status types.FriendStatus
@@ -417,11 +414,9 @@ func (s *Service) handleFriendResponsePollStream(stream network.Stream) {
 	peerID := stream.Conn().RemotePeer()
 	log.Printf("FriendResponsePoll: Received new stream from %s", peerID.ShortString())
 
-	// Get the current relationship status
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Fetch relationship status from repository
 	relationship, err := s.relationshipRepo.GetRelationByPeerId(ctx, peerID.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -442,7 +437,6 @@ func (s *Service) handleFriendResponsePollStream(stream network.Stream) {
 		}
 	}
 
-	// Marshal the relationship to JSON
 	responseBytes, err := json.Marshal(relationship)
 	if err != nil {
 		log.Printf("FriendResponsePoll Handler: Error marshaling relationship for %s: %v", peerID.String(), err)
@@ -450,7 +444,6 @@ func (s *Service) handleFriendResponsePollStream(stream network.Stream) {
 		return
 	}
 
-	// Write the response
 	writer := bufio.NewWriter(stream)
 	_, err = writer.Write(responseBytes)
 	if err != nil {
@@ -510,7 +503,6 @@ func (s *Service) AskForFriendRequestResponse(peerId string) error {
 		return fmt.Errorf("invalid peer ID format: %w", err)
 	}
 
-	// Check connectedness
 	connectedness := (*s.appState.Node).Network().Connectedness(targetPID)
 	if connectedness != network.Connected {
 		log.Printf("Not connected to %s (State: %s). Attempting connection...", targetPID.ShortString(), connectedness)
@@ -521,7 +513,6 @@ func (s *Service) AskForFriendRequestResponse(peerId string) error {
 			return fmt.Errorf("cannot connect to peer %s: no known addresses", targetPID.ShortString())
 		}
 
-		// Set up timeout for connection attempt
 		connectCtx, connectCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer connectCancel()
 
@@ -533,7 +524,6 @@ func (s *Service) AskForFriendRequestResponse(peerId string) error {
 		log.Printf("Successfully connected to %s", targetPID.ShortString())
 	}
 
-	// Open stream using the FriendResponsePollProtocolId
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -545,7 +535,6 @@ func (s *Service) AskForFriendRequestResponse(peerId string) error {
 	}
 	defer stream.Close()
 
-	// Write our peer ID to the stream to identify ourselves
 	myPeerID := (*s.appState.Node).ID().String()
 	_, err = stream.Write([]byte(myPeerID))
 	if err != nil {
@@ -554,7 +543,6 @@ func (s *Service) AskForFriendRequestResponse(peerId string) error {
 		return fmt.Errorf("AskForFriendRequestResponse :failed to write to stream: %w", err)
 	}
 
-	// Read the response
 	reader := bufio.NewReader(stream)
 	responseBytes, err := io.ReadAll(reader)
 	if err != nil {
@@ -563,12 +551,10 @@ func (s *Service) AskForFriendRequestResponse(peerId string) error {
 		return fmt.Errorf("AskForFriendRequestResponse :failed to read from stream: %w", err)
 	}
 
-	// If we got an empty response, the peer might not have processed our request yet
 	if len(responseBytes) == 0 {
 		return nil
 	}
 
-	// Parse the response
 	var relationship types.FriendRelationship
 	err = json.Unmarshal(responseBytes, &relationship)
 	if err != nil {

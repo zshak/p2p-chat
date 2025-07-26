@@ -85,7 +85,7 @@ func (c *Consumer) handleMessageReceived(message types.ChatMessage) {
 }
 
 func (c *Consumer) SaveMessage(message types.ChatMessage) {
-	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second) // Short timeout for DB operation
+	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
 	defer cancel()
 
 	encryptedMessage, err := crypto_utils.EncryptDataWithKey(c.appState.DbKey, []byte(message.Content), core.DefaultCryptoConfig)
@@ -118,7 +118,7 @@ func (c *Consumer) handleGroupChatMessageSentEvent(message events.GroupChatMessa
 }
 
 func (c *Consumer) SaveGroupChatMessage(event events.GroupChatMessage) {
-	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second) // Short timeout for DB operation
+	storeCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
 	defer cancel()
 
 	encryptedMesasge, err := crypto_utils.EncryptDataWithKey(c.appState.DbKey, []byte(event.Message), core.DefaultCryptoConfig)

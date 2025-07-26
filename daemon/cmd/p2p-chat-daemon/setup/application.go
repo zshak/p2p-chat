@@ -251,7 +251,6 @@ func (app *Application) Stop() {
 		}
 	}
 
-	// Stop pubsub service
 	if app.pubsubService != nil {
 		if err := app.pubsubService.Stop(); err != nil {
 			log.Printf("Error stopping pubsub service: %v", err)

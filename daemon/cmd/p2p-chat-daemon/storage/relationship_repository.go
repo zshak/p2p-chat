@@ -10,7 +10,6 @@ import (
 	"time"
 )
 
-// RelationshipRepository defines the operations for persisting  messages.
 type RelationshipRepository interface {
 	Store(ctx context.Context, relationship types.FriendRelationship) error
 	UpdateStatus(ctx context.Context, relationship types.FriendRelationship) error
@@ -19,13 +18,10 @@ type RelationshipRepository interface {
 	GetPendingRelations(ctx context.Context) ([]types.FriendRelationship, error)
 }
 
-// --- SQLite Implementation ---
-
 type sqliteRelationshipRepository struct {
 	db *sql.DB
 }
 
-// NewSQLiteRelationshipRepository creates a new repository instance.
 func NewSQLiteRelationshipRepository(database *DB) (RelationshipRepository, error) {
 	if database == nil {
 		return nil, errors.New("database connection is required for relationship repo")
@@ -33,7 +29,6 @@ func NewSQLiteRelationshipRepository(database *DB) (RelationshipRepository, erro
 	return &sqliteRelationshipRepository{db: database.GetDB()}, nil
 }
 
-// Store saves a message, ensuring the conversation exists.
 func (r *sqliteRelationshipRepository) Store(ctx context.Context, relationship types.FriendRelationship) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -114,7 +109,7 @@ func (r *sqliteRelationshipRepository) UpdateStatus(ctx context.Context, relatio
 func (r *sqliteRelationshipRepository) GetRelationByPeerId(ctx context.Context, peerId string) (types.FriendRelationship, error) {
 	var rel types.FriendRelationship
 	var statusStr string
-	var requestedAtStr, approvedAtStr sql.NullString // For reading nullable TEXT dates
+	var requestedAtStr, approvedAtStr sql.NullString
 
 	sqlStmt := `SELECT peer_id, status, requested_at, approved_at
                 FROM relationships WHERE peer_id = ?;`
@@ -268,7 +263,6 @@ func (r *sqliteRelationshipRepository) GetPendingRelations(ctx context.Context) 
 		pendingRequests = append(pendingRequests, rel)
 	}
 
-	// Check for errors from iterating over rows
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating over pending relationships: %w", err)
 	}
@@ -288,6 +282,6 @@ func stringToFriendStatus(s string) types.FriendStatus {
 		return types.FriendStatusRejected
 	default:
 		log.Printf("WARN: Unknown friends status string '%s' from DB, defaulting to None.", s)
-		return types.FriendStatusNone // Default or error
+		return types.FriendStatusNone
 	}
 }

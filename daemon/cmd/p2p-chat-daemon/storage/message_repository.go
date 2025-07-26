@@ -10,26 +10,17 @@ import (
 	"time"
 )
 
-// MessageRepository defines the operations for persisting chat messages.
 type MessageRepository interface {
-	// Store saves a new message to the database.
 	Store(ctx context.Context, msg types.StoredMessage) (id int64, err error)
-
 	StoreGroupMessage(ctx context.Context, msg types.StoredGroupMessage) error
-
 	GetGroupMessages(ctx context.Context, groupID string, limit int, before time.Time) ([]types.StoredGroupMessage, error)
-
-	// GetMessagesByPeerID retrieves messages exchanged with a specific peer, ordered by timestamp
 	GetMessagesByPeerID(ctx context.Context, peerID string, limit int) ([]types.StoredMessage, error)
 }
-
-// --- SQLite Implementation ---
 
 type sqliteMessageRepository struct {
 	db *sql.DB
 }
 
-// NewSQLiteMessageRepository creates a new repository instance.
 func NewSQLiteMessageRepository(database *DB) (MessageRepository, error) {
 	if database == nil {
 		return nil, errors.New("database connection is required for message repository")
@@ -37,7 +28,6 @@ func NewSQLiteMessageRepository(database *DB) (MessageRepository, error) {
 	return &sqliteMessageRepository{db: database.GetDB()}, nil
 }
 
-// Store saves a message, ensuring the conversation exists.
 func (r *sqliteMessageRepository) Store(ctx context.Context, msg types.StoredMessage) (int64, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -63,9 +53,7 @@ func (r *sqliteMessageRepository) Store(ctx context.Context, msg types.StoredMes
 
 	id, err := res.LastInsertId()
 	if err != nil {
-		// This driver might not support LastInsertId well, or table lacks AUTOINCREMENT? Check schema.
 		log.Printf("WARN: Could not get LastInsertId after message store: %v", err)
-		// Still commit, but return 0 for ID
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -75,23 +63,20 @@ func (r *sqliteMessageRepository) Store(ctx context.Context, msg types.StoredMes
 	return id, nil
 }
 
-// StoreGroupMessage saves a new group message to the group_messages table.
 func (r *sqliteMessageRepository) StoreGroupMessage(ctx context.Context, msg types.StoredGroupMessage) error {
 	sqlStmt := `
 		INSERT INTO group_messages (group_id, sender_peer_id, content, sent_at)
 		VALUES (?, ?, ?, ?);
 	`
-	// Ensure SentAt is not zero, default to Now() if it is.
 	sentAtTimestamp := msg.SentAt.Unix()
 	if msg.SentAt.IsZero() {
 		sentAtTimestamp = time.Now().Unix()
 	}
 
-	// Assuming EncryptedContent is []byte and DB column `content` is BLOB
 	_, err := r.db.ExecContext(ctx, sqlStmt,
 		msg.GroupID,
 		msg.SenderPeerID,
-		msg.EncryptedContent, // Store raw bytes if column is BLOB
+		msg.EncryptedContent,
 		sentAtTimestamp,
 	)
 
@@ -102,8 +87,6 @@ func (r *sqliteMessageRepository) StoreGroupMessage(ctx context.Context, msg typ
 	return nil
 }
 
-// GetGroupMessages retrieves recent messages for a specific group.
-// Returns messages ordered by most recent first.
 func (r *sqliteMessageRepository) GetGroupMessages(ctx context.Context, groupID string, limit int, before time.Time) ([]types.StoredGroupMessage, error) {
 	if limit <= 0 {
 		limit = 50
@@ -136,7 +119,7 @@ func (r *sqliteMessageRepository) GetGroupMessages(ctx context.Context, groupID 
 		err := rows.Scan(
 			&msg.GroupID,
 			&msg.SenderPeerID,
-			&encryptedContentBytes, // Scan into byte slice if DB column is BLOB
+			&encryptedContentBytes,
 			&sentAtUnix,
 		)
 		if err != nil {
@@ -158,8 +141,6 @@ func (r *sqliteMessageRepository) GetGroupMessages(ctx context.Context, groupID 
 	return messages, nil
 }
 
-// GetMessagesByPeerID retrieves messages exchanged with a specific peer.
-// Returns messages ordered by timestamp ascending (oldest first).
 func (r *sqliteMessageRepository) GetMessagesByPeerID(ctx context.Context, peerID string, limit int) ([]types.StoredMessage, error) {
 	log.Printf("Storage: Retrieving messages for peer %s", peerID)
 
@@ -171,10 +152,6 @@ func (r *sqliteMessageRepository) GetMessagesByPeerID(ctx context.Context, peerI
 		limit = 50
 	}
 
-	// This query retrieves messages where:
-	// 1. The specified peer is either the sender or recipient
-	// 2. Orders by send_time in ascending order (oldest first)
-	// 3. Limits the number of results
 	querySQL := `
 		SELECT id, sender_peer_id, recipient_peer_id, send_time, content, is_outgoing
 		FROM messages
@@ -207,11 +184,9 @@ func (r *sqliteMessageRepository) GetMessagesByPeerID(ctx context.Context, peerI
 			continue
 		}
 
-		// Parse the send_time string into a time.Time
 		sendTime, err := time.Parse(time.RFC3339, sendTimeStr)
 		if err != nil {
 			log.Printf("Storage: Error parsing send_time for message %d: %v", msg.ID, err)
-			// Use current time as a fallback
 			sendTime = time.Now()
 		}
 		msg.SendTime = sendTime

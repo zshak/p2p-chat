@@ -41,7 +41,6 @@ func NewNodeManager(ctx context.Context, appState *core.AppState, cfg *config.P2
 func (nm *NodeManager) Initialize() (*host.Host, error) {
 	log.Println("Initializing libp2p node...")
 
-	// Define listening addresses
 	listenAddrs := []string{
 		"/ip4/0.0.0.0/tcp/0",      // IPv4 TCP
 		"/ip6/::/tcp/0",           // IPv6 TCP
@@ -49,7 +48,6 @@ func (nm *NodeManager) Initialize() (*host.Host, error) {
 		"/ip6/::/udp/0/quic",      // IPv6 QUIC
 	}
 
-	// Create multiaddrs
 	var multiaddrs []multiaddr.Multiaddr
 	for _, addr := range listenAddrs {
 		ma, err := multiaddr.NewMultiaddr(addr)
@@ -64,7 +62,6 @@ func (nm *NodeManager) Initialize() (*host.Host, error) {
 		return nil, fmt.Errorf("failed to create any valid listen multiaddrs")
 	}
 
-	// Create peer source function for auto relay
 	peerSource := nm.createPeerSourceFunc()
 
 	opts := []libp2p.Option{
@@ -81,7 +78,6 @@ func (nm *NodeManager) Initialize() (*host.Host, error) {
 		libp2p.EnableAutoNATv2(),
 	}
 
-	// Create libp2p node with options
 	node, err := libp2p.New(opts...)
 
 	addrs := node.Addrs()
@@ -106,32 +102,27 @@ func (nm *NodeManager) createPeerSourceFunc() func(context.Context, int) <-chan 
 		go func() {
 			defer close(peerChan)
 
-			// Get DHT instance from app state
 			nm.appState.Mu.Lock()
 			dhtInstance := nm.appState.Dht
 			nodeInstance := *nm.appState.Node
 			nm.appState.Mu.Unlock()
 
-			// Check if DHT is available
 			if dhtInstance == nil || nodeInstance == nil {
 				log.Println("AutoRelay PeerSource: DHT or node instance not yet available.")
 				return
 			}
 
 			found := int32(0)
-			// get fresh addresses
 			for _, pid := range dhtInstance.RoutingTable().ListPeers() {
 				if pid == nodeInstance.ID() {
 					continue
 				}
 
-				// Get fresh addresses
 				addrInfo, err := dhtInstance.FindPeer(ctx, pid)
 				if err != nil {
 					continue
 				}
 
-				// Check if peer supports relay protocol
 				protos, err := nodeInstance.Peerstore().GetProtocols(pid)
 				if err != nil {
 					continue
@@ -160,7 +151,6 @@ func (nm *NodeManager) createPeerSourceFunc() func(context.Context, int) <-chan 
 	}
 }
 
-// LogNodeDetails logs information about the node
 func (nm *NodeManager) LogNodeDetails() {
 	log.Printf("Node setup successful!")
 	log.Printf("Node Peer ID: %s", (*nm.node).ID())
@@ -186,8 +176,8 @@ func (nm *NodeManager) MonitorConnectedPeers() {
 
 // logPeerStatus logs the current peer connection status
 func (nm *NodeManager) logPeerStatus() {
-	ownAddrs := (*nm.node).Addrs()                           // External Addrs
-	psAddrs := (*nm.node).Peerstore().Addrs((*nm.node).ID()) // Peerstore Addrs
+	ownAddrs := (*nm.node).Addrs()
+	psAddrs := (*nm.node).Peerstore().Addrs((*nm.node).ID())
 	hasCircuitAddr := false
 
 	log.Printf("Periodic Check: Own addresses for %s:", (*nm.node).ID().ShortString())
@@ -219,7 +209,6 @@ func (nm *NodeManager) logPeerStatus() {
 	}
 }
 
-// Close safely closes the node
 func (nm *NodeManager) Close() error {
 	if nm.node != nil {
 		log.Println("Closing libp2p node...")

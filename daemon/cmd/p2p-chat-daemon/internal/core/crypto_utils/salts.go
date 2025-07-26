@@ -7,15 +7,15 @@ import (
 	"io"
 	"log"
 	"os"
-	"path/filepath" // For joining paths
+	"path/filepath"
 
-	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core" // For CryptoConfig
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
 )
 
 const (
 	identityKeySaltFilename   = "identity.salt"
 	databaseFieldSaltFilename = "dbfield.salt"
-	filePermissions           = 0600 // Read/write only for user
+	filePermissions           = 0600
 )
 
 // EnsureSaltFileExists generates and saves a salt file if it doesn't exist,
@@ -27,14 +27,13 @@ func EnsureSaltFileExists(appDataDir string, saltFilename string, saltLen int) (
 	if appDataDir == "" {
 		return nil, errors.New("appDataDir cannot be empty")
 	}
-	if err := os.MkdirAll(appDataDir, 0700); err != nil { // Ensure directory exists
+	if err := os.MkdirAll(appDataDir, 0700); err != nil {
 		return nil, fmt.Errorf("could not create app data sub-directory %s: %w", appDataDir, err)
 	}
 
 	filePath := filepath.Join(appDataDir, saltFilename)
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		// File does not exist, generate and save new salt
 		log.Printf("CryptoUtils: Salt file %s not found, generating new one.", filePath)
 		salt := make([]byte, saltLen)
 		if _, err := io.ReadFull(rand.Reader, salt); err != nil {
@@ -46,11 +45,9 @@ func EnsureSaltFileExists(appDataDir string, saltFilename string, saltLen int) (
 		log.Printf("CryptoUtils: New salt generated and saved to %s", filePath)
 		return salt, nil
 	} else if err != nil {
-		// Other error stating the file (e.g., permission issue)
 		return nil, fmt.Errorf("error stating salt file %s: %w", filePath, err)
 	}
 
-	// File exists, load it
 	salt, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read existing salt file %s: %w", filePath, err)

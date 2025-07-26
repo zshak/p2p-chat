@@ -2,7 +2,7 @@ package crypto_utils
 
 import (
 	"golang.org/x/crypto/argon2"
-	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core" // For CryptoConfig
+	"p2p-chat-daemon/cmd/p2p-chat-daemon/internal/core"
 )
 
 // DeriveKeyFromPassword uses Argon2id to derive a cryptographic key from a password and salt.

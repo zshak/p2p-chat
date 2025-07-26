@@ -30,7 +30,6 @@ const FriendRequests = ({open, onClose, friendRequests, onRequestHandled}) => {
             onRequestHandled(peerId, true);
         } catch (error) {
             console.error('Failed to accept friend request:', error);
-            // You might want to show an error message to the user
         }
     };
 
@@ -40,7 +39,6 @@ const FriendRequests = ({open, onClose, friendRequests, onRequestHandled}) => {
             onRequestHandled(peerId, false);
         } catch (error) {
             console.error('Failed to reject friend request:', error);
-            // You might want to show an error message to the user
         }
     };
 
@@ -158,7 +156,7 @@ const FriendRequests = ({open, onClose, friendRequests, onRequestHandled}) => {
 
                         {sentRequests.length > 0 && (
                             <>
-                                {pendingRequests.length > 0 && <Divider />}
+                                {pendingRequests.length > 0 && <Divider/>}
                                 <Typography variant="subtitle2" sx={{p: 2, bgcolor: 'background.paper'}}>
                                     Sent Requests ({sentRequests.length})
                                 </Typography>

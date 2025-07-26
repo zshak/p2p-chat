@@ -16,10 +16,7 @@ import (
 )
 
 const (
-	// OnlineAnnouncementTopic Topic for online announcements
-	OnlineAnnouncementTopic = core.OnlineAnnouncementTopic
-
-	// MsgTypeOnlineAnnouncement Message types
+	OnlineAnnouncementTopic   = core.OnlineAnnouncementTopic
 	MsgTypeOnlineAnnouncement = "online-announcement"
 )
 
@@ -61,7 +58,6 @@ func NewPubSubService(
 
 // Start initializes the pubsub topics and subscriptions
 func (s *Service) Start() error {
-	// Create a new PubSub service using GossipSub
 	pubsubService, err := pubsub.NewGossipSub(s.ctx, *s.appState.Node)
 	if err != nil {
 		return fmt.Errorf("failed to create pubsub service: %w", err)
@@ -69,14 +65,12 @@ func (s *Service) Start() error {
 
 	s.pubsub = pubsubService
 
-	// Join the online announcement topic
 	onlineTopic, err := s.pubsub.Join(OnlineAnnouncementTopic)
 	if err != nil {
 		return fmt.Errorf("failed to join online announcement topic: %w", err)
 	}
 	s.topics[OnlineAnnouncementTopic] = onlineTopic
 
-	// Subscribe to the online announcement topic
 	sub, err := onlineTopic.Subscribe()
 	if err != nil {
 		log.Printf("Error subscribing to online announcement topic: %v", err)
@@ -84,15 +78,12 @@ func (s *Service) Start() error {
 	}
 	s.subs[OnlineAnnouncementTopic] = sub
 
-	// Start listening for messages
 	go s.handleIncomingMessages(sub, "")
 
 	return nil
 }
 
-// JoinTopic joins pubsub topic
 func (s *Service) JoinTopic(topicName string, groupId string) error {
-	// Join the online announcement topicName
 	topic, err := s.pubsub.Join(topicName)
 	if err != nil {
 		return fmt.Errorf("failed to join online announcement topicName: %w", err)
@@ -100,20 +91,17 @@ func (s *Service) JoinTopic(topicName string, groupId string) error {
 
 	s.topics[topicName] = topic
 
-	// Subscribe to the online announcement topicName
 	sub, err := topic.Subscribe()
 	if err != nil {
 		log.Printf("Error subscribing to online announcement topicName: %v", err)
 		return fmt.Errorf("failed to subscribe to online announcement topicName: %w", err)
 	}
 
-	// Start listening for messages
 	go s.handleIncomingMessages(sub, groupId)
 
 	return nil
 }
 
-// handleIncomingMessages processes incoming online announcements
 func (s *Service) handleIncomingMessages(sub *pubsub.Subscription, groupId string) {
 	for {
 		msg, err := sub.Next(s.ctx)
@@ -123,7 +111,6 @@ func (s *Service) handleIncomingMessages(sub *pubsub.Subscription, groupId strin
 			return
 		}
 
-		// Ignore messages from ourselves
 		if msg.ReceivedFrom == (*s.appState.Node).ID() {
 			continue
 		}

@@ -1,11 +1,10 @@
 import React from 'react';
 import {Avatar, Box, Paper, Typography,} from '@mui/material';
-import {getPeerId} from '../utils/userStore'; // Assuming this utility exists
+import {getPeerId} from '../utils/userStore';
 
 
 const ChatMessage = ({message, currentUser}) => {
-    // Get current user's peer ID from props or localStorage
-    const ownPeerId = getPeerId(); // Get current user's peer ID
+    const ownPeerId = getPeerId();
     const isMyMessage = message.sender === 'me' || message.sender === ownPeerId;
 
     const formatTime = (timestamp) => {
@@ -21,8 +20,6 @@ const ChatMessage = ({message, currentUser}) => {
 
     const getSenderDisplayName = (senderPeerId) => {
         if (senderPeerId === ownPeerId) return 'You';
-
-        // Fallback to truncated peer ID
         if (senderPeerId && senderPeerId.length > 8) {
             return `${senderPeerId.substring(0, 4)}...${senderPeerId.substring(senderPeerId.length - 4)}`;
         }

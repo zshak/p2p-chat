@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import {setDisplayNameAPI, getDisplayNameAPI, deleteDisplayNameAPI} from "../../services/api.js"
+import {deleteDisplayNameAPI, setDisplayNameAPI} from "../../services/api.js"
 
 const EditDisplayName = ({entity, entityType, currentDisplayName, onUpdate, onClose}) => {
     const [open, setOpen] = useState(false);

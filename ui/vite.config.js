@@ -30,7 +30,6 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:59579',
         changeOrigin: true,
-        // Don't rewrite the path - keep /api prefix
       },
       '/ws': {
         target: 'ws://127.0.0.1:59579',
@@ -40,11 +39,9 @@ export default defineConfig({
     }
   },
 
-  // Changed from './' to '/' for proper routing
   base: '/',
 
   define: {
-    // Remove the hardcoded API URL for production builds
     'import.meta.env.VITE_BACKEND_API_BASE_URL': JSON.stringify(process.env.NODE_ENV === 'production' ? '/api' : undefined)
   }
 })
