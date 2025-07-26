@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API_BASE_URL = ("http://" + import.meta.env.VITE_BACKEND_API_BASE_URL) || 'http://127.0.0.1:59578';
+// const API_BASE_URL = ("http://" + import.meta.env.VITE_BACKEND_API_BASE_URL) || 'http://127.0.0.1:59578';
+
+const API_BASE_URL = import.meta.env.VITE_BACKEND_API_BASE_URL || `${window.location.origin}/api`;
+
 
 const api = axios.create({
     baseURL: API_BASE_URL,
